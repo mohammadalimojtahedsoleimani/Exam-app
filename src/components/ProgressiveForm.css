@@ -1,0 +1,30 @@
+/*
+  This class name prefix 'form-item-transition' matches the `classNames` prop
+  we will use in the CSSTransition component.
+*/
+
+/* Initial state before the element enters */
+.form-item-transition-enter {
+  opacity: 0;
+  transform: translateY(20px);
+}
+
+/* State during the enter animation */
+.form-item-transition-enter-active {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 300ms ease-in-out, transform 300ms ease-in-out;
+}
+
+/* State right before the element exits (optional, but good practice) */
+.form-item-transition-exit {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* State during the exit animation */
+.form-item-transition-exit-active {
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity 300ms ease-in-out, transform 300ms ease-in-out;
+}
