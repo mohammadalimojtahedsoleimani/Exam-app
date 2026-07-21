@@ -1,0 +1,668 @@
+.signup-page {
+    --signup-primary: #2dd4bf;
+    --signup-primary-bright: #67e8f9;
+    --signup-secondary: #3b82f6;
+    --signup-surface: rgba(15, 23, 42, 0.78);
+    --signup-border: rgba(148, 163, 184, 0.14);
+    --signup-text: #f8fafc;
+    --signup-muted: #a8b5c8;
+    position: relative;
+    isolation: isolate;
+    min-height: 100dvh;
+    overflow-x: hidden;
+    background:
+        radial-gradient(circle at 82% 8%, rgba(15, 118, 110, 0.19), transparent 29rem),
+        radial-gradient(circle at 10% 90%, rgba(37, 99, 235, 0.15), transparent 31rem),
+        linear-gradient(135deg, #07101f 0%, #040a15 46%, #020611 100%);
+    color: var(--signup-text);
+    font-family: 'Vazirmatn', Tahoma, sans-serif;
+}
+
+.signup-skip-link {
+    position: fixed;
+    z-index: 100;
+    top: 0.75rem;
+    right: 50%;
+    padding: 0.7rem 1rem;
+    transform: translate(50%, -160%);
+    border: 1px solid rgba(94, 234, 212, 0.55);
+    border-radius: 0.8rem;
+    background: #0f172a;
+    box-shadow: 0 0.9rem 2rem rgba(0, 0, 0, 0.3);
+    color: #fff;
+    font-size: 0.8rem;
+    font-weight: 800;
+    transition: transform 180ms ease;
+}
+
+.signup-skip-link:focus {
+    transform: translate(50%, 0);
+    outline: 3px solid rgba(103, 232, 249, 0.42);
+    outline-offset: 2px;
+}
+
+.signup-backdrop,
+.signup-backdrop > span {
+    position: absolute;
+    pointer-events: none;
+}
+
+.signup-backdrop {
+    z-index: -1;
+    inset: 0;
+    overflow: hidden;
+}
+
+.signup-backdrop__grid {
+    inset: 0;
+    opacity: 0.13;
+    background-image:
+        linear-gradient(rgba(148, 163, 184, 0.16) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(148, 163, 184, 0.16) 1px, transparent 1px);
+    background-size: 3rem 3rem;
+    mask-image: linear-gradient(to bottom, black, transparent 84%);
+}
+
+.signup-backdrop__glow {
+    border-radius: 999px;
+    filter: blur(7.5rem);
+}
+
+.signup-backdrop__glow--teal {
+    top: -16rem;
+    right: -13rem;
+    width: 38rem;
+    height: 38rem;
+    background: rgba(20, 184, 166, 0.13);
+}
+
+.signup-backdrop__glow--blue {
+    bottom: -18rem;
+    left: -13rem;
+    width: 40rem;
+    height: 40rem;
+    background: rgba(37, 99, 235, 0.12);
+}
+
+.signup-backdrop__beam {
+    top: -40%;
+    left: 46%;
+    width: 1px;
+    height: 170%;
+    transform: rotate(24deg);
+    background: linear-gradient(transparent, rgba(103, 232, 249, 0.24), transparent);
+    box-shadow: 0 0 4rem 1rem rgba(56, 189, 248, 0.06);
+}
+
+.signup-backdrop__dot {
+    width: 0.35rem;
+    height: 0.35rem;
+    border-radius: 999px;
+    background: #67e8f9;
+    box-shadow: 0 0 1.6rem 0.3rem rgba(103, 232, 249, 0.42);
+}
+
+.signup-backdrop__dot--one {
+    top: 21%;
+    left: 9%;
+}
+
+.signup-backdrop__dot--two {
+    right: 8%;
+    bottom: 14%;
+    width: 0.22rem;
+    height: 0.22rem;
+    background: #60a5fa;
+}
+
+.signup-shell {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    width: min(100% - 2rem, 86rem);
+    min-height: 100dvh;
+    margin-inline: auto;
+    flex-direction: column;
+    padding-block: 1rem 0.7rem;
+}
+
+.signup-topbar {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.signup-brand {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    gap: 0.7rem;
+}
+
+.signup-brand__mark,
+.signup-brand__partner-mark {
+    display: grid;
+    flex: 0 0 auto;
+    place-items: center;
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    box-shadow: 0 0.8rem 2.2rem rgba(0, 0, 0, 0.18), 0 1px 0 rgba(255, 255, 255, 0.08) inset;
+}
+
+.signup-brand__mark {
+    width: 3.2rem;
+    height: 3.2rem;
+    border-radius: 1rem;
+    background: rgba(255, 255, 255, 0.96);
+}
+
+.signup-brand__mark img {
+    width: 2rem;
+    height: 2.2rem;
+    object-fit: contain;
+}
+
+.signup-brand__copy {
+    display: grid;
+    gap: 0.08rem;
+    white-space: nowrap;
+}
+
+.signup-brand__copy strong {
+    color: #f8fafc;
+    font-size: 0.84rem;
+    font-weight: 900;
+}
+
+.signup-brand__copy > span {
+    color: #94a3b8;
+    font-size: 0.72rem;
+    font-weight: 500;
+}
+
+.signup-brand__divider {
+    width: 1px;
+    height: 2.4rem;
+    margin-inline: 0.35rem 0;
+    background: linear-gradient(transparent, rgba(148, 163, 184, 0.28), transparent);
+}
+
+.signup-brand__partner {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    color: #cbd5e1;
+    font-size: 0.7rem;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.signup-brand__partner > span:last-child {
+    display: grid;
+}
+
+.signup-brand__partner small {
+    color: #718096;
+    font-size: 0.68rem;
+    font-weight: 600;
+}
+
+.signup-brand__partner-mark {
+    width: 2.7rem;
+    height: 2.7rem;
+    overflow: hidden;
+    border-radius: 0.8rem;
+    background: rgba(255, 255, 255, 0.92);
+}
+
+.signup-brand__partner-mark img {
+    width: 2.4rem;
+    height: 2.4rem;
+    object-fit: contain;
+}
+
+.signup-results-link {
+    display: inline-flex;
+    min-height: 2.75rem;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    gap: 0.55rem;
+    padding-inline: 0.9rem;
+    border: 1px solid rgba(148, 163, 184, 0.14);
+    border-radius: 0.9rem;
+    background: rgba(15, 23, 42, 0.48);
+    box-shadow: 0 0.8rem 2.5rem rgba(0, 0, 0, 0.12), 0 1px 0 rgba(255, 255, 255, 0.035) inset;
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    color: #b8c5d6;
+    font-size: 0.75rem;
+    font-weight: 700;
+    transition: border-color 180ms ease, background 180ms ease, color 180ms ease, transform 180ms ease;
+}
+
+.signup-results-link .anticon {
+    color: #5eead4;
+    font-size: 0.92rem;
+}
+
+.signup-results-link:hover {
+    transform: translateY(-1px);
+    border-color: rgba(94, 234, 212, 0.38);
+    background: rgba(13, 148, 136, 0.11);
+    color: #fff;
+}
+
+.signup-results-link:focus-visible {
+    outline: 3px solid rgba(103, 232, 249, 0.38);
+    outline-offset: 3px;
+    color: #fff;
+}
+
+.signup-main-grid {
+    display: grid;
+    flex: 1 1 auto;
+    grid-template-columns: minmax(0, 1fr);
+    align-items: center;
+    gap: 1.5rem;
+    padding-block: 1.5rem;
+}
+
+.signup-hero {
+    position: relative;
+    min-width: 0;
+}
+
+.signup-hero__content {
+    position: relative;
+    z-index: 1;
+    max-width: 39rem;
+}
+
+.signup-hero__eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.45rem 0.75rem;
+    border: 1px solid rgba(94, 234, 212, 0.18);
+    border-radius: 999px;
+    background: rgba(13, 148, 136, 0.09);
+    color: #99f6e4;
+    font-size: 0.75rem;
+    font-weight: 700;
+}
+
+.signup-hero__eyebrow .anticon {
+    color: #5eead4;
+}
+
+.signup-hero h1 {
+    max-width: 38rem;
+    margin: 1.15rem 0 0;
+    color: #f8fafc;
+    font-size: clamp(2.05rem, 4.4vw, 4.35rem);
+    font-weight: 900;
+    letter-spacing: -0.035em;
+    line-height: 1.27;
+    text-wrap: balance;
+}
+
+.signup-hero h1 span {
+    display: block;
+    background: linear-gradient(96deg, #99f6e4 3%, #67e8f9 45%, #60a5fa 96%);
+    background-clip: text;
+    -webkit-background-clip: text;
+    color: transparent;
+    filter: drop-shadow(0 0.9rem 2.3rem rgba(45, 212, 191, 0.1));
+}
+
+.signup-hero__copy {
+    max-width: 35rem;
+    margin: 1rem 0 0;
+    color: #b3c0d1;
+    font-size: clamp(0.9rem, 1.3vw, 1rem);
+    line-height: 2;
+}
+
+.signup-confidence-list {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.65rem;
+    margin-top: 1.4rem;
+}
+
+.signup-confidence-item {
+    display: flex;
+    min-width: 0;
+    align-items: flex-start;
+    gap: 0.6rem;
+    padding: 0.75rem;
+    border: 1px solid rgba(148, 163, 184, 0.11);
+    border-radius: 1rem;
+    background: rgba(15, 23, 42, 0.37);
+    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.025) inset;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+}
+
+.signup-confidence-item__icon {
+    display: grid;
+    flex: 0 0 auto;
+    width: 2rem;
+    height: 2rem;
+    place-items: center;
+    border: 1px solid rgba(94, 234, 212, 0.15);
+    border-radius: 0.7rem;
+    background: rgba(45, 212, 191, 0.08);
+    color: #67e8f9;
+    font-size: 0.9rem;
+}
+
+.signup-confidence-item > span:last-child {
+    display: grid;
+    min-width: 0;
+    gap: 0.18rem;
+}
+
+.signup-confidence-item strong {
+    color: #e5edf7;
+    font-size: 0.75rem;
+    font-weight: 800;
+    line-height: 1.6;
+}
+
+.signup-confidence-item small {
+    color: #8795aa;
+    font-size: 0.72rem;
+    line-height: 1.65;
+}
+
+.signup-journey {
+    display: flex;
+    max-width: 35rem;
+    align-items: center;
+    gap: 0.75rem;
+    margin-top: 1.1rem;
+    padding: 0.85rem 1rem;
+    border: 1px solid rgba(148, 163, 184, 0.12);
+    border-radius: 1.1rem;
+    background: linear-gradient(120deg, rgba(15, 23, 42, 0.52), rgba(15, 23, 42, 0.28));
+    box-shadow: 0 1rem 3rem rgba(0, 0, 0, 0.08), 0 1px 0 rgba(255, 255, 255, 0.03) inset;
+}
+
+.signup-journey__icon {
+    display: grid;
+    flex: 0 0 auto;
+    width: 2.25rem;
+    height: 2.25rem;
+    place-items: center;
+    border: 1px solid rgba(94, 234, 212, 0.24);
+    border-radius: 0.75rem;
+    background: rgba(45, 212, 191, 0.09);
+    color: #5eead4;
+    font-size: 1rem;
+}
+
+.signup-journey__copy {
+    display: grid;
+    min-width: 0;
+    gap: 0.1rem;
+}
+
+.signup-journey__copy strong {
+    color: #e5edf7;
+    font-size: 0.75rem;
+    font-weight: 800;
+}
+
+.signup-journey__copy small {
+    color: #94a3b8;
+    font-size: 0.72rem;
+    line-height: 1.7;
+}
+
+.signup-orbit {
+    position: absolute;
+    z-index: 0;
+    top: 50%;
+    left: -5rem;
+    width: 18rem;
+    height: 18rem;
+    transform: translateY(-50%);
+    opacity: 0.42;
+}
+
+.signup-orbit__ring,
+.signup-orbit__axis,
+.signup-orbit__core {
+    position: absolute;
+}
+
+.signup-orbit__ring {
+    inset: 0;
+    border: 1px solid rgba(103, 232, 249, 0.16);
+    border-radius: 999px;
+}
+
+.signup-orbit__ring--inner {
+    inset: 24%;
+    border-color: rgba(96, 165, 250, 0.22);
+}
+
+.signup-orbit__axis {
+    top: 50%;
+    right: 4%;
+    left: 4%;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(103, 232, 249, 0.22), transparent);
+}
+
+.signup-orbit__core {
+    display: grid;
+    top: 50%;
+    left: 50%;
+    width: 3.5rem;
+    height: 3.5rem;
+    transform: translate(-50%, -50%);
+    place-items: center;
+    border: 1px solid rgba(103, 232, 249, 0.3);
+    border-radius: 999px;
+    background: rgba(8, 145, 178, 0.09);
+    box-shadow: 0 0 3rem rgba(45, 212, 191, 0.12);
+    color: #67e8f9;
+    font-size: 1.2rem;
+}
+
+.signup-form-stage {
+    position: relative;
+    width: min(100%, 33rem);
+    margin-inline: auto;
+    scroll-margin-top: 1rem;
+}
+
+.signup-form-stage:focus {
+    outline: none;
+}
+
+.signup-form-stage:focus-visible .signup-card {
+    outline: 3px solid rgba(103, 232, 249, 0.32);
+    outline-offset: 4px;
+}
+
+.signup-form-stage__halo {
+    position: absolute;
+    z-index: -1;
+    inset: -1.1rem;
+    border-radius: 2.5rem;
+    background: linear-gradient(145deg, rgba(45, 212, 191, 0.1), transparent 40%, rgba(37, 99, 235, 0.12));
+    filter: blur(1.4rem);
+}
+
+.signup-footer {
+    display: flex;
+    min-height: 2rem;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    gap: 0.65rem;
+    border-top: 1px solid rgba(148, 163, 184, 0.08);
+    color: #718096;
+    font-size: 0.72rem;
+    font-weight: 500;
+}
+
+.signup-footer__separator {
+    width: 0.22rem;
+    height: 0.22rem;
+    border-radius: 999px;
+    background: rgba(45, 212, 191, 0.55);
+    box-shadow: 0 0 0.7rem rgba(45, 212, 191, 0.3);
+}
+
+@media (min-width: 67.5rem) {
+    .signup-main-grid {
+        grid-template-columns: minmax(0, 1fr) minmax(28rem, 33rem);
+        gap: clamp(3.5rem, 6vw, 7rem);
+        padding-block: 1rem;
+    }
+}
+
+@media (max-width: 67.499rem) {
+    .signup-shell {
+        width: min(100% - 2rem, 47rem);
+    }
+
+    .signup-main-grid {
+        align-content: center;
+        gap: 1.25rem;
+    }
+
+    .signup-hero__content {
+        max-width: 35rem;
+        margin-inline: auto;
+        text-align: center;
+    }
+
+    .signup-hero h1 {
+        margin-top: 0.8rem;
+        font-size: clamp(1.8rem, 6vw, 2.7rem);
+    }
+
+    .signup-hero__copy,
+    .signup-confidence-list,
+    .signup-journey,
+    .signup-orbit {
+        display: none;
+    }
+
+    .signup-form-stage {
+        width: min(100%, 35rem);
+    }
+}
+
+@media (max-width: 40rem) {
+    .signup-shell {
+        width: min(100% - 1.5rem, 35rem);
+        padding-top: 0.75rem;
+    }
+
+    .signup-brand__divider,
+    .signup-brand__partner {
+        display: none;
+    }
+
+    .signup-brand__mark {
+        width: 2.85rem;
+        height: 2.85rem;
+        border-radius: 0.85rem;
+    }
+
+    .signup-brand__mark img {
+        width: 1.75rem;
+        height: 1.95rem;
+    }
+
+    .signup-results-link {
+        min-width: 2.75rem;
+        padding-inline: 0.75rem;
+    }
+
+    .signup-main-grid {
+        padding-block: 1.1rem;
+    }
+
+    .signup-hero__eyebrow {
+        padding: 0.38rem 0.65rem;
+        font-size: 0.72rem;
+    }
+
+    .signup-hero h1 {
+        margin-top: 0.65rem;
+        font-size: clamp(1.55rem, 8vw, 2rem);
+        line-height: 1.35;
+    }
+
+    .signup-footer {
+        font-size: 0.7rem;
+    }
+
+    .signup-footer > span:last-child,
+    .signup-footer__separator {
+        display: none;
+    }
+}
+
+@media (min-width: 67.5rem) and (max-height: 48rem) {
+    .signup-shell {
+        padding-top: 0.55rem;
+        padding-bottom: 0.35rem;
+    }
+
+    .signup-brand__mark {
+        width: 2.8rem;
+        height: 2.8rem;
+    }
+
+    .signup-brand__mark img {
+        height: 1.9rem;
+    }
+
+    .signup-brand__partner-mark {
+        width: 2.35rem;
+        height: 2.35rem;
+    }
+
+    .signup-main-grid {
+        padding-block: 0.45rem;
+    }
+
+    .signup-hero h1 {
+        margin-top: 0.75rem;
+        font-size: clamp(2.25rem, 4vw, 3.55rem);
+    }
+
+    .signup-hero__copy {
+        margin-top: 0.6rem;
+        line-height: 1.75;
+    }
+
+    .signup-confidence-list {
+        margin-top: 0.8rem;
+    }
+
+    .signup-journey {
+        margin-top: 0.65rem;
+    }
+
+    .signup-footer {
+        min-height: 1.5rem;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .signup-skip-link,
+    .signup-results-link {
+        transition: none !important;
+    }
+}

@@ -1,4 +1,5 @@
 import AppRoutes from './routes';
+import { CloseOutlined } from '@ant-design/icons';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
@@ -7,11 +8,14 @@ const GLOBAL_TOAST_CONTAINER_ID = 'app-global';
 const ToastCloseButton = ({ closeToast }) => (
   <button
     type="button"
-    onClick={closeToast}
+    onClick={(event) => {
+      event.stopPropagation();
+      closeToast();
+    }}
     aria-label="بستن اعلان"
-    className="px-2 text-lg text-slate-400 transition-colors hover:text-white"
+    className="app-toast__close"
   >
-    ×
+    <CloseOutlined aria-hidden="true" />
   </button>
 );
 
@@ -22,6 +26,7 @@ function App() {
         containerId={GLOBAL_TOAST_CONTAINER_ID}
         position="top-center"
         autoClose={3500}
+        limit={3}
         newestOnTop
         closeOnClick
         rtl
@@ -30,6 +35,8 @@ function App() {
         draggable
         pauseOnHover
         closeButton={ToastCloseButton}
+        toastClassName="app-toast"
+        progressClassName="app-toast__progress"
         aria-label="اعلان‌ها"
         theme="dark"
       />

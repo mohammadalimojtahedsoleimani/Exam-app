@@ -370,7 +370,7 @@ src/
 │   ├── sounds/                # Narrated instruction audio
 │   └── ...                    # Logos and visual assets
 ├── components/
-│   └── ProgressiveForm .jsx   # Participant registration form
+│   └── ProgressiveForm.jsx    # Participant registration form
 ├── pages/
 │   ├── SignUp.jsx             # Registration landing page
 │   ├── InstructionsScreen.jsx # Synchronized narrated instructions

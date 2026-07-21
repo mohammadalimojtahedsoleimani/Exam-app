@@ -1,11 +1,161 @@
-@import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;600;700&display=swap');
-
+@import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700;800;900&display=swap');
 @import "tailwindcss";
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
 
+:root {
+  font-family: 'Vazirmatn', Tahoma, Arial, sans-serif;
+  color: #f8fafc;
+  background: #020617;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+
+html {
+  min-width: 20rem;
+  min-height: 100%;
+  background: #020617;
+}
 
 body {
-  font-family: 'Vazirmatn', sans-serif;
+  min-width: 20rem;
+  min-height: 100%;
+  margin: 0;
+  background: #020617;
+  font-family: 'Vazirmatn', Tahoma, Arial, sans-serif;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+#app-global .Toastify__toast-container {
+  width: min(26rem, calc(100vw - 1.5rem));
+  padding: 0;
+  direction: rtl;
+}
+
+.app-toast.Toastify__toast {
+  position: relative;
+  min-height: 4.4rem;
+  margin-bottom: 0.65rem;
+  padding: 0.72rem 0.78rem;
+  overflow: hidden;
+  border: 1px solid rgba(125, 211, 252, 0.2) !important;
+  border-radius: 1.15rem !important;
+  background:
+    linear-gradient(145deg, rgba(15, 23, 42, 0.98), rgba(7, 15, 29, 0.98)) !important;
+  box-shadow:
+    0 1.35rem 3.6rem rgba(0, 0, 0, 0.38),
+    0 1px 0 rgba(255, 255, 255, 0.08) inset !important;
+  color: #e2e8f0;
+  font-family: 'Vazirmatn', Tahoma, Arial, sans-serif;
+  backdrop-filter: blur(22px);
+  -webkit-backdrop-filter: blur(22px);
+}
+
+.app-toast.Toastify__toast::before {
+  position: absolute;
+  top: 0;
+  right: 12%;
+  left: 12%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(125, 211, 252, 0.68), transparent);
+  content: '';
+}
+
+.app-toast--success.Toastify__toast,
+.app-toast.Toastify__toast--success {
+  border-color: rgba(45, 212, 191, 0.32) !important;
+}
+
+.app-toast--success.Toastify__toast::before,
+.app-toast.Toastify__toast--success::before {
+  background: linear-gradient(90deg, transparent, rgba(94, 234, 212, 0.78), transparent);
+}
+
+.app-toast--error.Toastify__toast,
+.app-toast.Toastify__toast--error {
+  border-color: rgba(251, 113, 133, 0.34) !important;
+}
+
+.app-toast--error.Toastify__toast::before,
+.app-toast.Toastify__toast--error::before {
+  background: linear-gradient(90deg, transparent, rgba(253, 164, 175, 0.76), transparent);
+}
+
+.app-toast--warning.Toastify__toast,
+.app-toast.Toastify__toast--warning {
+  border-color: rgba(251, 191, 36, 0.34) !important;
+}
+
+.app-toast--warning.Toastify__toast::before,
+.app-toast.Toastify__toast--warning::before {
+  background: linear-gradient(90deg, transparent, rgba(252, 211, 77, 0.76), transparent);
+}
+
+.app-toast .Toastify__toast-icon {
+  width: 2rem;
+  margin-inline: 0 0.65rem;
+  color: #67e8f9;
+}
+
+.app-toast.Toastify__toast--success .Toastify__toast-icon {
+  color: #5eead4;
+}
+
+.app-toast.Toastify__toast--error .Toastify__toast-icon {
+  color: #fda4af;
+}
+
+.app-toast__close {
+  display: grid;
+  flex: 0 0 auto;
+  width: 2.75rem;
+  height: 2.75rem;
+  margin: -0.35rem -0.2rem -0.35rem -0.35rem;
+  place-items: center;
+  border: 0;
+  border-radius: 0.8rem;
+  background: transparent;
+  color: #8290a5;
+  cursor: pointer;
+  transition: background 180ms ease, color 180ms ease;
+}
+
+.app-toast__close:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+}
+
+.app-toast__close:focus-visible {
+  outline: 2px solid rgba(103, 232, 249, 0.5);
+  outline-offset: -2px;
+  color: #fff;
+}
+
+.app-toast__progress {
+  background: linear-gradient(90deg, #2dd4bf, #38bdf8) !important;
+}
+
+@media (max-width: 30rem) {
+  #app-global .Toastify__toast-container--top-center {
+    top: 0.65rem;
+    right: 0.75rem;
+    left: 0.75rem;
+    width: auto;
+    transform: none;
+  }
+
+  .app-toast.Toastify__toast {
+    margin-bottom: 0.5rem;
+    border-radius: 1rem !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-toast__close {
+    transition: none;
+  }
 }

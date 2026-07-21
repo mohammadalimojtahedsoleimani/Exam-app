@@ -1,52 +1,16 @@
 import axios from "axios";
-import { toast, Slide } from 'react-toastify';
 import { API_SERVER } from "../utils/API_SERVER.js";
 
-const GLOBAL_TOAST_CONTAINER_ID = 'app-global';
-
-const TOAST_CONFIG = {
-    containerId: GLOBAL_TOAST_CONTAINER_ID,
-    theme: "dark",
-    transition: Slide,
-    style: {
-        background: 'rgba(15, 23, 42, 0.95)',
-        border: '1px solid #2dd4bf',
-        color: '#e2e8f0',
-        fontFamily: "'Vazirmatn', sans-serif",
-        boxShadow: '0 4px 15px rgba(0,0,0,0.5)',
-        direction: 'rtl',
-    },
-    progressStyle: { background: '#2dd4bf' }
-};
-
-
-const updateToast = (id, message, type) => {
-    toast.update(id, {
-        render: message,
-        type: type,
-        isLoading: false,
-        autoClose: 3000,
-        ...TOAST_CONFIG
-    });
-};
-
 export const getProbePhases = async (token) => {
-
-    const toastId = toast.loading('درحال دریافت اطلاعات...', TOAST_CONFIG);
-
     try {
         const response = await axios.get(`${API_SERVER()}probe/phases/`, {
             headers: { Authorization: `token ${token}` },
         });
 
-
-        updateToast(toastId, 'آزمون با موفقیت دریافت شد', 'success');
         return response;
 
     } catch (error) {
         console.error(error);
-
-        updateToast(toastId, 'مشکلی در دریافت آزمون رخ داد', 'error');
         throw error;
     }
 };
@@ -67,8 +31,6 @@ export const createProbeSession = async (token, targetId) => {
 
 
 export const getSessionClusters = async (token, phaseId) => {
-    const toastId = toast.loading("در حال ساخت جلسه آزمون...", TOAST_CONFIG);
-
     try {
         const response = await axios.get(`${API_SERVER()}probe/sessions/clusters/`, {
             headers: { Authorization: `token ${token}` },
@@ -77,12 +39,10 @@ export const getSessionClusters = async (token, phaseId) => {
             }
         });
 
-        updateToast(toastId, "جلسه آزمون با موفقیت ساخته شد", 'success');
         return response;
 
     } catch (error) {
         console.error(error);
-        updateToast(toastId, 'ساخت جلسه آزمون با مشکل روبرو شد', 'error');
         throw error;
     }
 };
