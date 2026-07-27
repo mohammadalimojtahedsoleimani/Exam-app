@@ -8,7 +8,9 @@ import {
     CheckCircleFilled,
     ClockCircleOutlined,
     ExperimentOutlined,
+    NodeIndexOutlined,
     SafetyCertificateOutlined,
+    ThunderboltFilled,
 } from '@ant-design/icons';
 import { motion as Motion, useReducedMotion } from 'framer-motion';
 import { Link } from 'react-router-dom';
@@ -34,6 +36,12 @@ const confidenceItems = [
         title: 'شروع با مرحله تمرینی',
         description: 'ابتدا با روند پاسخ‌گویی آشنا می‌شوید.',
     },
+];
+
+const heroStats = [
+    { icon: NodeIndexOutlined, value: '۳', label: 'مرحله آزمون' },
+    { icon: ClockCircleOutlined, value: '~۱۵', label: 'دقیقه زمان' },
+    { icon: SafetyCertificateOutlined, value: '۱۰۰٪', label: 'کاربرد پژوهشی' },
 ];
 
 const SignUp = () => {
@@ -77,10 +85,12 @@ const SignUp = () => {
                         activeShadow: '0 0 0 3px rgba(45, 212, 191, 0.13)',
                         hoverBorderColor: '#5eead4',
                     },
-                    Select: {
-                        activeBorderColor: '#2dd4bf',
-                        activeOutlineColor: 'rgba(45, 212, 191, 0.13)',
-                        hoverBorderColor: '#5eead4',
+                    Radio: {
+                        buttonBg: 'transparent',
+                        buttonCheckedBg: 'transparent',
+                        buttonSolidCheckedBg: 'transparent',
+                        buttonSolidCheckedHoverBg: 'transparent',
+                        buttonSolidCheckedActiveBg: 'transparent',
                     },
                 },
             }}
@@ -92,11 +102,13 @@ const SignUp = () => {
 
                 <div className="signup-backdrop" aria-hidden="true">
                     <span className="signup-backdrop__grid" />
+                    <span className="signup-backdrop__aurora" />
                     <span className="signup-backdrop__glow signup-backdrop__glow--teal" />
                     <span className="signup-backdrop__glow signup-backdrop__glow--blue" />
                     <span className="signup-backdrop__beam" />
                     <span className="signup-backdrop__dot signup-backdrop__dot--one" />
                     <span className="signup-backdrop__dot signup-backdrop__dot--two" />
+                    <span className="signup-backdrop__dot signup-backdrop__dot--three" />
                 </div>
 
                 <div className="signup-shell">
@@ -127,14 +139,21 @@ const SignUp = () => {
                             </span>
                         </div>
 
-                        <Link
-                            to={APP_ROUTE.RESULTS}
-                            className="signup-results-link"
-                            aria-label="مشاهده نتایج پژوهش"
-                        >
-                            <BarChartOutlined aria-hidden="true" />
-                            <span className="signup-results-link__label">نتایج</span>
-                        </Link>
+                        <div className="signup-topbar__actions">
+                            <span className="signup-status" role="status">
+                                <span className="signup-status__dot" aria-hidden="true" />
+                                <span className="signup-status__label">سامانه فعال است</span>
+                            </span>
+
+                            <Link
+                                to={APP_ROUTE.RESULTS}
+                                className="signup-results-link"
+                                aria-label="مشاهده نتایج پژوهش"
+                            >
+                                <BarChartOutlined aria-hidden="true" />
+                                <span className="signup-results-link__label">نتایج</span>
+                            </Link>
+                        </div>
                     </Motion.header>
 
                     <div className="signup-main-grid">
@@ -146,14 +165,19 @@ const SignUp = () => {
                             aria-labelledby="signup-hero-title"
                         >
                             <div className="signup-orbit" aria-hidden="true">
-                                <span className="signup-orbit__ring signup-orbit__ring--outer" />
-                                <span className="signup-orbit__ring signup-orbit__ring--inner" />
+                                <span className="signup-orbit__ring signup-orbit__ring--outer">
+                                    <span className="signup-orbit__satellite" />
+                                </span>
+                                <span className="signup-orbit__ring signup-orbit__ring--inner">
+                                    <span className="signup-orbit__satellite signup-orbit__satellite--blue" />
+                                </span>
                                 <span className="signup-orbit__axis" />
                                 <span className="signup-orbit__core"><AimOutlined /></span>
                             </div>
 
                             <div className="signup-hero__content">
                                 <span className="signup-hero__eyebrow">
+                                    <span className="signup-hero__eyebrow-pulse" aria-hidden="true" />
                                     <ExperimentOutlined aria-hidden="true" />
                                     سامانه پژوهشی دانشگاه خوارزمی
                                 </span>
@@ -167,12 +191,45 @@ const SignUp = () => {
                                     اطلاعات اولیه را وارد کنید. راهنمای هر مرحله پیش از شروع نمایش داده می‌شود تا با آرامش و تمرکز مسیر آزمون را دنبال کنید.
                                 </p>
 
+                                <Motion.div
+                                    className="signup-stats"
+                                    initial={reduceMotion ? false : { opacity: 0, y: 12 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    transition={{ ...enterTransition, delay: reduceMotion ? 0 : 0.16 }}
+                                    aria-label="خلاصه آزمون"
+                                >
+                                    {heroStats.map((stat) => {
+                                        const StatIcon = stat.icon;
+
+                                        return (
+                                            <div className="signup-stat" key={stat.label}>
+                                                <span className="signup-stat__icon" aria-hidden="true">
+                                                    <StatIcon />
+                                                </span>
+                                                <span className="signup-stat__copy">
+                                                    <strong>{stat.value}</strong>
+                                                    <small>{stat.label}</small>
+                                                </span>
+                                            </div>
+                                        );
+                                    })}
+                                </Motion.div>
+
                                 <div className="signup-confidence-list" aria-label="ویژگی‌های فرایند آزمون">
-                                    {confidenceItems.map((item) => {
+                                    {confidenceItems.map((item, index) => {
                                         const ConfidenceIcon = item.icon;
 
                                         return (
-                                            <article className="signup-confidence-item" key={item.title}>
+                                            <Motion.article
+                                                className="signup-confidence-item"
+                                                key={item.title}
+                                                initial={reduceMotion ? false : { opacity: 0, y: 14 }}
+                                                animate={{ opacity: 1, y: 0 }}
+                                                transition={{
+                                                    ...enterTransition,
+                                                    delay: reduceMotion ? 0 : 0.22 + index * 0.07,
+                                                }}
+                                            >
                                                 <span className="signup-confidence-item__icon" aria-hidden="true">
                                                     <ConfidenceIcon />
                                                 </span>
@@ -180,7 +237,7 @@ const SignUp = () => {
                                                     <strong>{item.title}</strong>
                                                     <small>{item.description}</small>
                                                 </span>
-                                            </article>
+                                            </Motion.article>
                                         );
                                     })}
                                 </div>
@@ -189,7 +246,7 @@ const SignUp = () => {
                                     className="signup-journey"
                                     initial={reduceMotion ? false : { opacity: 0, y: 14 }}
                                     animate={{ opacity: 1, y: 0 }}
-                                    transition={{ ...enterTransition, delay: reduceMotion ? 0 : 0.2 }}
+                                    transition={{ ...enterTransition, delay: reduceMotion ? 0 : 0.45 }}
                                 >
                                     <span className="signup-journey__icon" aria-hidden="true">
                                         <CheckCircleFilled />
@@ -197,6 +254,9 @@ const SignUp = () => {
                                     <span className="signup-journey__copy">
                                         <strong>فرایند هدایت‌شده</strong>
                                         <small>پس از ثبت اطلاعات، مستقیماً وارد راهنمای مرحله تمرینی می‌شوید.</small>
+                                    </span>
+                                    <span className="signup-journey__badge" aria-hidden="true">
+                                        <ThunderboltFilled />
                                     </span>
                                 </Motion.div>
                             </div>

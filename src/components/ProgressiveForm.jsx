@@ -1,12 +1,11 @@
-import React, { useRef, useState } from 'react';
-import { Button, Form, Input, InputNumber, Select } from 'antd';
+import React, { useEffect, useRef, useState } from 'react';
+import { Button, Form, Input, InputNumber, Radio } from 'antd';
 import {
     ArrowLeftOutlined,
     BookOutlined,
     CheckCircleFilled,
     CheckOutlined,
     CloseCircleFilled,
-    DownOutlined,
     ExclamationCircleFilled,
     ExperimentOutlined,
     IdcardOutlined,
@@ -16,8 +15,11 @@ import {
     ManOutlined,
     NumberOutlined,
     SafetyCertificateOutlined,
+    SolutionOutlined,
     TeamOutlined,
+    ThunderboltFilled,
     UserOutlined,
+    UserSwitchOutlined,
     WomanOutlined,
 } from '@ant-design/icons';
 import { toast, Slide, cssTransition } from 'react-toastify';
@@ -34,6 +36,9 @@ import './ProgressiveForm.css';
 const GLOBAL_TOAST_CONTAINER_ID = 'app-global';
 const SIGNUP_SUBMISSION_TOAST_ID = 'signup-submission-feedback';
 const SIGNUP_VALIDATION_TOAST_ID = 'signup-validation-feedback';
+const SUCCESS_REDIRECT_DELAY = 950;
+const REQUIRED_FIELDS = ['subject_id', 'age', 'gender', 'group'];
+
 const ReducedMotionToastTransition = cssTransition({
     enter: 'signup-toast-reduced-motion-enter',
     exit: 'signup-toast-reduced-motion-exit',
@@ -52,6 +57,8 @@ const flowSteps = [
     { label: 'آماده‌سازی جلسه', icon: ExperimentOutlined },
     { label: 'راهنمای آزمون', icon: BookOutlined },
 ];
+
+const toPersianDigits = (value) => Number(value).toLocaleString('fa-IR');
 
 const getRegistrationErrorMessage = (error) => {
     const responseData = error.response?.data;
@@ -81,6 +88,33 @@ const getServerFieldErrors = (error) => {
         .map(([field, message]) => ({ name: field, errors: [message] }));
 };
 
+const focusFieldSafely = (form, name) => {
+    try {
+        form.focusField(name);
+    } catch {
+        /* Segmented and custom controls may not expose a focusable ref. */
+    }
+};
+
+const isFieldFilled = (value) => {
+    if (typeof value === 'string') return value.trim().length > 0;
+    return value !== undefined && value !== null && value !== '';
+};
+
+const FieldLabel = ({ icon, text, hint }) => {
+    const LabelIcon = icon;
+
+    return (
+        <span className="signup-label">
+            <span className="signup-label__icon" aria-hidden="true">
+                <LabelIcon />
+            </span>
+            <span className="signup-label__text">{text}</span>
+            {hint ? <span className="signup-label__hint">{hint}</span> : null}
+        </span>
+    );
+};
+
 const SignupToastContent = ({ type, title, message }) => {
     const iconByType = {
         loading: LoadingOutlined,
@@ -94,6 +128,7 @@ const SignupToastContent = ({ type, title, message }) => {
     return (
         <div className={`signup-toast-content signup-toast-content--${type}`} dir="rtl">
             <span className="signup-toast-content__icon" aria-hidden="true">
+                <span className="signup-toast-content__pulse" />
                 <Icon spin={type === 'loading'} />
             </span>
             <span className="signup-toast-content__copy">
@@ -139,13 +174,17 @@ const startSignupToast = (title, message, reduceMotion) => {
 };
 
 const updateSignupToast = (toastId, type, title, message, reduceMotion) => {
+    const autoClose = type === 'error' || type === 'warning' ? 5000 : 3500;
+
     toast.update(toastId, {
         ...getToastBaseOptions(reduceMotion),
         render: <SignupToastContent type={type} title={title} message={message} />,
         type,
         isLoading: false,
-        autoClose: type === 'error' || type === 'warning' ? 5000 : 3500,
+        autoClose,
+        hideProgressBar: false,
         className: `app-toast app-toast--${type}`,
+        progressClassName: `app-toast__progress app-toast__progress--${type}`,
         ariaLabel: `${title}؛ ${message}`,
         closeButton: true,
         closeOnClick: true,
@@ -162,6 +201,19 @@ const ProgressiveForm = () => {
     const [submissionStage, setSubmissionStage] = useState('idle');
     const [registeredToken, setRegisteredToken] = useState('');
     const submissionInFlightRef = useRef(false);
+    const redirectTimerRef = useRef(null);
+    const watchedValues = Form.useWatch([], form);
+
+    useEffect(() => () => {
+        if (redirectTimerRef.current) clearTimeout(redirectTimerRef.current);
+    }, []);
+
+    const isSuccess = submissionStage === 'success';
+    const filledCount = REQUIRED_FIELDS
+        .filter((field) => isFieldFilled(watchedValues?.[field])).length;
+    const completionPercent = isSuccess
+        ? 100
+        : Math.round((filledCount / REQUIRED_FIELDS.length) * 100);
 
     const startParticipantSession = async (token) => {
         await findValidSession(token);
@@ -178,6 +230,7 @@ const ProgressiveForm = () => {
         toast.dismiss({ id: SIGNUP_VALIDATION_TOAST_ID, containerId: GLOBAL_TOAST_CONTAINER_ID });
 
         let token = registeredToken;
+        let succeeded = false;
         const toastId = startSignupToast(
             token ? 'در حال آماده‌سازی آزمون' : 'در حال ثبت اطلاعات',
             token ? 'جلسه آزمون دوباره بررسی می‌شود.' : 'لطفاً چند لحظه منتظر بمانید.',
@@ -207,6 +260,8 @@ const ProgressiveForm = () => {
 
             setSubmissionStage('preparing');
             await startParticipantSession(token);
+            succeeded = true;
+            setSubmissionStage('success');
             updateSignupToast(
                 toastId,
                 'success',
@@ -214,7 +269,14 @@ const ProgressiveForm = () => {
                 'در حال انتقال به راهنمای آزمون هستید.',
                 reduceMotion,
             );
-            navigate(APP_ROUTE.INSTRUCTIONS, { replace: true });
+
+            if (reduceMotion) {
+                navigate(APP_ROUTE.INSTRUCTIONS, { replace: true });
+            } else {
+                redirectTimerRef.current = setTimeout(() => {
+                    navigate(APP_ROUTE.INSTRUCTIONS, { replace: true });
+                }, SUCCESS_REDIRECT_DELAY);
+            }
         } catch (error) {
             console.error(error);
 
@@ -231,7 +293,7 @@ const ProgressiveForm = () => {
 
                 if (fieldErrors.length > 0) {
                     form.setFields(fieldErrors);
-                    form.focusField(fieldErrors[0].name);
+                    focusFieldSafely(form, fieldErrors[0].name);
                 }
 
                 updateSignupToast(
@@ -244,8 +306,11 @@ const ProgressiveForm = () => {
             }
         } finally {
             submissionInFlightRef.current = false;
-            setSubmissionStage('idle');
-            setIsLoading(false);
+
+            if (!succeeded) {
+                setSubmissionStage('idle');
+                setIsLoading(false);
+            }
         }
     };
 
@@ -255,44 +320,82 @@ const ProgressiveForm = () => {
                 behavior: reduceMotion ? 'auto' : 'smooth',
                 block: 'center',
             });
-            form.focusField(errorFields[0].name);
+            focusFieldSafely(form, errorFields[0].name);
         }
 
+        const title = `${toPersianDigits(errorFields.length)} مورد نیاز به بررسی دارد`;
+        const message = 'فیلدهای مشخص‌شده را تکمیل یا اصلاح کنید.';
+
         toast(
-            <SignupToastContent
-                type="error"
-                title="چند مورد نیاز به بررسی دارد"
-                message="فیلدهای مشخص‌شده را تکمیل یا اصلاح کنید."
-            />,
+            <SignupToastContent type="error" title={title} message={message} />,
             {
                 ...getToastBaseOptions(reduceMotion),
                 toastId: SIGNUP_VALIDATION_TOAST_ID,
                 type: 'error',
                 autoClose: 4000,
+                hideProgressBar: false,
                 className: 'app-toast app-toast--error',
-                ariaLabel: 'چند مورد نیاز به بررسی دارد؛ فیلدهای مشخص‌شده را تکمیل یا اصلاح کنید.',
+                progressClassName: 'app-toast__progress app-toast__progress--error',
+                ariaLabel: `${title}؛ ${message}`,
             },
         );
     };
 
     const lockRegisteredFields = Boolean(registeredToken);
-    const activeFlowStep = lockRegisteredFields || submissionStage === 'preparing' ? 1 : 0;
+    const activeFlowStep = isSuccess
+        ? 2
+        : lockRegisteredFields || submissionStage === 'preparing'
+            ? 1
+            : 0;
     const loadingLabel = submissionStage === 'preparing'
         ? 'در حال آماده‌سازی جلسه…'
         : 'در حال ثبت اطلاعات…';
+    const meterLabel = isSuccess
+        ? 'همه‌چیز آماده است'
+        : filledCount === REQUIRED_FIELDS.length
+            ? 'آماده ارسال'
+            : `${toPersianDigits(filledCount)} از ${toPersianDigits(REQUIRED_FIELDS.length)} مورد تکمیل شده`;
 
     return (
-        <div className="signup-card">
-            <div className="signup-card__sheen" aria-hidden="true" />
+        <div className={`signup-card${isSuccess ? ' signup-card--success' : ''}`}>
+            <span className="signup-card__sheen" aria-hidden="true" />
+            <span className="signup-card__scan" aria-hidden="true" />
 
             <div className="signup-card__header">
                 <div className="signup-card__icon" aria-hidden="true">
+                    <span className="signup-card__icon-ring" />
                     <IdcardOutlined />
                 </div>
                 <div className="signup-card__heading">
-                    <span className="signup-card__eyebrow">فرم شروع آزمون</span>
+                    <span className="signup-card__eyebrow">
+                        <ThunderboltFilled aria-hidden="true" />
+                        فرم شروع آزمون
+                    </span>
                     <h2 id="registration-form-title">اطلاعات اولیه شما</h2>
                     <p>برای ساخت جلسه آزمون، هر چهار مورد را تکمیل کنید.</p>
+                </div>
+            </div>
+
+            <div
+                className="signup-meter"
+                role="progressbar"
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-valuenow={completionPercent}
+                aria-label="میزان تکمیل فرم"
+            >
+                <div className="signup-meter__top">
+                    <span className="signup-meter__label">
+                        <SolutionOutlined aria-hidden="true" />
+                        {meterLabel}
+                    </span>
+                    <span className="signup-meter__value">{toPersianDigits(completionPercent)}٪</span>
+                </div>
+                <div className="signup-meter__track">
+                    <span
+                        className="signup-meter__fill"
+                        style={{ width: `${completionPercent}%` }}
+                    />
                 </div>
             </div>
 
@@ -320,7 +423,7 @@ const ProgressiveForm = () => {
                 })}
             </ol>
 
-            {registeredToken && (
+            {registeredToken && !isSuccess && (
                 <div className="signup-retry-note" role="status">
                     <SafetyCertificateOutlined aria-hidden="true" />
                     <span>
@@ -346,7 +449,7 @@ const ProgressiveForm = () => {
             >
                 <div className="signup-field signup-field--first">
                     <Form.Item
-                        label="شناسه شرکت‌کننده"
+                        label={<FieldLabel icon={UserOutlined} text="شناسه شرکت‌کننده" hint="الزامی" />}
                         name="subject_id"
                         rules={[
                             { required: true, message: 'شناسه شرکت‌کننده را وارد کنید.' },
@@ -358,7 +461,7 @@ const ProgressiveForm = () => {
                         ]}
                     >
                         <Input
-                            prefix={<UserOutlined aria-hidden="true" />}
+                            prefix={<IdcardOutlined aria-hidden="true" />}
                             placeholder="شناسه‌ای که پژوهشگر در اختیار شما گذاشته است"
                             disabled={isLoading || lockRegisteredFields}
                             maxLength={64}
@@ -372,7 +475,7 @@ const ProgressiveForm = () => {
                 <div className="signup-fields-row">
                     <div className="signup-field signup-field--second">
                         <Form.Item
-                            label="سن"
+                            label={<FieldLabel icon={NumberOutlined} text="سن" />}
                             name="age"
                             rules={[
                                 { required: true, message: 'سن را وارد کنید.' },
@@ -396,36 +499,23 @@ const ProgressiveForm = () => {
 
                     <div className="signup-field signup-field--third">
                         <Form.Item
-                            label="جنسیت"
-                            name="gender"
-                            rules={[{ required: true, message: 'جنسیت را انتخاب کنید.' }]}
+                            label={<FieldLabel icon={TeamOutlined} text="شماره گروه" />}
+                            name="group"
+                            rules={[
+                                { required: true, message: 'شماره گروه را وارد کنید.' },
+                                { type: 'integer', message: 'شماره گروه باید یک عدد کامل باشد.' },
+                                { type: 'number', min: 0, message: 'شماره گروه نمی‌تواند منفی باشد.' },
+                            ]}
                         >
-                            <Select
-                                placeholder="انتخاب کنید"
+                            <InputNumber
+                                prefix={<TeamOutlined aria-hidden="true" />}
+                                placeholder="شماره گروه"
+                                min={0}
+                                precision={0}
+                                controls={false}
+                                inputMode="numeric"
                                 disabled={isLoading || lockRegisteredFields}
-                                suffixIcon={<DownOutlined aria-hidden="true" />}
-                                menuItemSelectedIcon={<CheckOutlined aria-hidden="true" />}
-                                aria-label="جنسیت شرکت‌کننده"
-                                options={[
-                                    {
-                                        value: 'MALE',
-                                        label: (
-                                            <span className="signup-gender-option">
-                                                <ManOutlined aria-hidden="true" />
-                                                مرد
-                                            </span>
-                                        ),
-                                    },
-                                    {
-                                        value: 'FEMALE',
-                                        label: (
-                                            <span className="signup-gender-option">
-                                                <WomanOutlined aria-hidden="true" />
-                                                زن
-                                            </span>
-                                        ),
-                                    },
-                                ]}
+                                aria-label="شماره گروه شرکت‌کننده"
                             />
                         </Form.Item>
                     </div>
@@ -433,23 +523,38 @@ const ProgressiveForm = () => {
 
                 <div className="signup-field signup-field--fourth">
                     <Form.Item
-                        label="شماره گروه"
-                        name="group"
-                        rules={[
-                            { required: true, message: 'شماره گروه را وارد کنید.' },
-                            { type: 'integer', message: 'شماره گروه باید یک عدد کامل باشد.' },
-                            { type: 'number', min: 0, message: 'شماره گروه نمی‌تواند منفی باشد.' },
-                        ]}
+                        label={<FieldLabel icon={UserSwitchOutlined} text="جنسیت" />}
+                        name="gender"
+                        rules={[{ required: true, message: 'جنسیت را انتخاب کنید.' }]}
                     >
-                        <InputNumber
-                            prefix={<TeamOutlined aria-hidden="true" />}
-                            placeholder="شماره گروه"
-                            min={0}
-                            precision={0}
-                            controls={false}
-                            inputMode="numeric"
+                        <Radio.Group
+                            className="signup-choice"
+                            block
+                            optionType="button"
+                            buttonStyle="solid"
                             disabled={isLoading || lockRegisteredFields}
-                            aria-label="شماره گروه شرکت‌کننده"
+                            role="radiogroup"
+                            aria-label="جنسیت شرکت‌کننده"
+                            options={[
+                                {
+                                    value: 'MALE',
+                                    label: (
+                                        <span className="signup-choice__label">
+                                            <ManOutlined aria-hidden="true" />
+                                            مرد
+                                        </span>
+                                    ),
+                                },
+                                {
+                                    value: 'FEMALE',
+                                    label: (
+                                        <span className="signup-choice__label">
+                                            <WomanOutlined aria-hidden="true" />
+                                            زن
+                                        </span>
+                                    ),
+                                },
+                            ]}
                         />
                     </Form.Item>
                 </div>
@@ -461,16 +566,22 @@ const ProgressiveForm = () => {
                         htmlType="submit"
                         block
                         disabled={isLoading}
-                        loading={isLoading ? {
+                        loading={isLoading && !isSuccess ? {
                             icon: <LoadingOutlined spin={!reduceMotion} aria-hidden="true" />,
                         } : false}
-                        icon={!isLoading && <ArrowLeftOutlined aria-hidden="true" />}
+                        icon={
+                            isSuccess
+                                ? <CheckOutlined aria-hidden="true" />
+                                : !isLoading && <ArrowLeftOutlined aria-hidden="true" />
+                        }
                     >
-                        {isLoading
-                            ? loadingLabel
-                            : registeredToken
-                                ? 'تلاش دوباره برای شروع آزمون'
-                                : 'شروع آزمون'}
+                        {isSuccess
+                            ? 'آماده است — در حال انتقال'
+                            : isLoading
+                                ? loadingLabel
+                                : registeredToken
+                                    ? 'تلاش دوباره برای شروع آزمون'
+                                    : 'شروع آزمون'}
                     </Button>
                 </Form.Item>
             </Form>
@@ -479,6 +590,16 @@ const ProgressiveForm = () => {
                 <LockOutlined aria-hidden="true" />
                 <span>اطلاعات واردشده تنها در چارچوب این پژوهش استفاده می‌شود.</span>
             </div>
+
+            {isSuccess && (
+                <div className="signup-card__success" role="status">
+                    <span className="signup-card__success-ring" aria-hidden="true">
+                        <CheckOutlined />
+                    </span>
+                    <strong>جلسه آزمون آماده شد</strong>
+                    <span>در حال انتقال به راهنمای مرحله تمرینی…</span>
+                </div>
+            )}
         </div>
     );
 };
