@@ -8,7 +8,7 @@ import {
     setVideoSeen,
     findValidSession
 } from "../api/probes.js";
-import {PauseCircleOutlined, PlayCircleOutlined, FileTextOutlined} from '@ant-design/icons';
+import {PlayCircleOutlined, FileTextOutlined} from '@ant-design/icons';
 import {API_SERVER} from "../utils/API_SERVER.js";
 import {
     APP_ROUTE,
@@ -85,7 +85,7 @@ const Trial = () => {
     const [globalStatus, setGlobalStatus] = useState('LOADING');
     const [flowError, setFlowError] = useState('');
     const [pendingSubmission, setPendingSubmission] = useState(null);
-    const [isVideoPlaying, setIsVideoPlaying] = useState(false);
+    const [isVideoComplete, setIsVideoComplete] = useState(false);
     const [isSavingVideo, setIsSavingVideo] = useState(false);
 
     const [currentTrialIndex, setCurrentTrialIndex] = useState(0);
@@ -140,6 +140,7 @@ const Trial = () => {
                 setExams(null);
                 setCurrentTrialIndex(0);
                 setTrialPhase('INITIAL');
+                setIsVideoComplete(false);
 
                 const data = await getSessionClusters(token, sessionID);
 
@@ -319,18 +320,18 @@ const Trial = () => {
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [globalStatus, trialPhase, handleSubmitAnswer]);
 
-    const handleToggleVideoPlayback = async () => {
+    const handleVideoPause = async () => {
         const video = videoRef.current;
-        if (!video || isSavingVideo || videoSeenInFlightRef.current) return;
+        const reachedNaturalEnd = video
+            && Number.isFinite(video.duration)
+            && video.currentTime >= video.duration;
+
+        if (!video || video.ended || reachedNaturalEnd || videoSeenInFlightRef.current) return;
 
         try {
-            if (video.paused) {
-                await video.play();
-            } else {
-                video.pause();
-            }
+            await video.play();
         } catch (error) {
-            console.error('Video playback failed', error);
+            console.error('Video playback could not be resumed', error);
             setFlowError('پخش ویدیو انجام نشد. لطفاً دوباره تلاش کنید.');
         }
     };
@@ -338,7 +339,6 @@ const Trial = () => {
     const handleVideoEnded = async () => {
         if (videoSeenInFlightRef.current) return;
         videoSeenInFlightRef.current = true;
-        setIsVideoPlaying(false);
         setIsSavingVideo(true);
         setFlowError('');
 
@@ -352,9 +352,11 @@ const Trial = () => {
 
             await setVideoSeen(token, sessionVideoId);
             localStorage.setItem('currentPhaseVideoSeen', 'true');
-            setGlobalStatus('TEST');
+            setIsVideoComplete(true);
+            setGlobalStatus('VIDEO');
         } catch (error) {
             console.error('Failed to save video completion', error);
+            setIsVideoComplete(false);
             setFlowError('ثبت مشاهده ویدیو انجام نشد. لطفاً دوباره تلاش کنید.');
             setGlobalStatus('VIDEO_ERROR');
         } finally {
@@ -366,7 +368,7 @@ const Trial = () => {
     const handleVideoError = () => {
         if (videoRef.current?.ended) return;
 
-        setIsVideoPlaying(false);
+        setIsVideoComplete(false);
         setFlowError('بارگذاری ویدیو انجام نشد. لطفاً دوباره تلاش کنید.');
         setGlobalStatus('VIDEO_LOAD_ERROR');
     };
@@ -595,28 +597,38 @@ const Trial = () => {
                                 src={exams.data.video.file}
                                 className="w-full h-auto"
                                 controls={false}
+                                controlsList="nodownload noplaybackrate noremoteplayback"
+                                disablePictureInPicture
+                                disableRemotePlayback
                                 autoPlay
                                 playsInline
-                                onPlay={() => setIsVideoPlaying(true)}
-                                onPause={() => setIsVideoPlaying(false)}
+                                onPause={handleVideoPause}
                                 onEnded={handleVideoEnded}
                                 onError={handleVideoError}
+                                onContextMenu={(event) => event.preventDefault()}
                             >
                                 مرورگر شما امکان پخش این ویدیو را ندارد.
                             </video>
                         </div>
-                        <Button
-                            type="primary"
-                            size="large"
-                            icon={isVideoPlaying ? <PauseCircleOutlined /> : <PlayCircleOutlined />}
-                            onClick={handleToggleVideoPlayback}
-                            loading={isSavingVideo}
-                            style={{...styles.primaryButton, minWidth: '180px'}}
-                        >
-                            {isVideoPlaying ? 'توقف ویدیو' : 'پخش ویدیو'}
-                        </Button>
+                        {isVideoComplete && (
+                            <Button
+                                type="primary"
+                                size="large"
+                                onClick={() => {
+                                    setFlowError('');
+                                    setGlobalStatus('TEST');
+                                }}
+                                style={{...styles.primaryButton, minWidth: '180px'}}
+                            >
+                                ادامه آزمون
+                            </Button>
+                        )}
                         <Paragraph style={{marginTop: '20px', color: '#94a3b8'}}>
-                            لطفاً ویدیو را تا انتها تماشا کنید. آزمون پس از پایان ویدیو به صورت خودکار شروع می‌شود.
+                            {isVideoComplete
+                                ? 'مشاهده ویدیو کامل شد. برای شروع، دکمه ادامه آزمون را انتخاب کنید.'
+                                : isSavingVideo
+                                    ? 'در حال ثبت مشاهده کامل ویدیو...'
+                                    : 'لطفاً ویدیو را تا انتها تماشا کنید. پس از پایان، دکمه ادامه آزمون نمایش داده می‌شود.'}
                         </Paragraph>
                         {flowError && (
                             <Paragraph style={{color: '#fca5a5'}}>{flowError}</Paragraph>
