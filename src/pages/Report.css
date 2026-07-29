@@ -9,8 +9,9 @@
     isolation: isolate;
     display: flex;
     min-width: 20rem;
-    min-height: 100dvh;
-    overflow-x: hidden;
+    height: 100dvh;
+    max-height: 100dvh;
+    overflow: hidden;
     flex-direction: column;
     background:
         radial-gradient(circle at 50% -8%, rgba(var(--report-accent-rgb), 0.16), transparent 32rem),
@@ -133,10 +134,11 @@
     z-index: 1;
     display: flex;
     width: min(100% - 2rem, 42rem);
-    min-height: 100dvh;
+    height: 100%;
+    min-height: 0;
     margin-inline: auto;
     flex-direction: column;
-    padding-block: 1.1rem 0.9rem;
+    padding-block: clamp(0.6rem, 1.6vh, 1.1rem) clamp(0.5rem, 1.3vh, 0.9rem);
 }
 
 .report-topbar {
@@ -213,11 +215,12 @@
     position: relative;
     display: flex;
     width: 100%;
-    flex: 0 0 auto;
+    min-height: 0;
+    flex: 0 1 auto;
     flex-direction: column;
     align-items: center;
     margin: auto;
-    padding: clamp(1.6rem, 3.4vw, 2.4rem) clamp(1.2rem, 3vw, 2.2rem);
+    padding: clamp(1.05rem, 3vh, 2.4rem) clamp(1.2rem, 3vw, 2.2rem);
     overflow: hidden;
     border: 1px solid rgba(var(--report-accent-rgb), 0.22);
     border-radius: 1.85rem;
@@ -261,21 +264,21 @@
 
 .report-emblem {
     display: grid;
-    width: 4.5rem;
-    height: 4.5rem;
+    width: clamp(3.2rem, 8vh, 4.5rem);
+    height: clamp(3.2rem, 8vh, 4.5rem);
     flex: 0 0 auto;
     place-items: center;
     border: 1px solid rgba(var(--report-accent-rgb), 0.3);
-    border-radius: 1.5rem;
+    border-radius: clamp(1.1rem, 2.6vh, 1.5rem);
     background: linear-gradient(145deg, rgba(var(--report-accent-rgb), 0.2), rgba(37, 99, 235, 0.14));
     box-shadow: 0 1.2rem 3rem rgba(0, 0, 0, 0.26), 0 0 2.6rem rgba(var(--report-accent-rgb), 0.18);
     color: var(--report-accent-soft);
-    font-size: 1.85rem;
+    font-size: clamp(1.35rem, 3.4vh, 1.85rem);
     transition: border-color 500ms ease, background 500ms ease, color 500ms ease;
 }
 
 .report-eyebrow {
-    margin-top: 1rem;
+    margin-top: clamp(0.5rem, 1.6vh, 1rem);
     color: var(--report-accent-soft);
     font-size: 0.75rem;
     font-weight: 800;
@@ -286,29 +289,29 @@
 .report-card h1 {
     margin: 0.3rem 0 0;
     color: #f8fafc;
-    font-size: clamp(1.25rem, 3.2vw, 1.65rem);
+    font-size: clamp(1.15rem, 2.9vh, 1.65rem);
     font-weight: 900;
     letter-spacing: -0.02em;
-    line-height: 1.55;
+    line-height: 1.5;
     text-wrap: balance;
 }
 
 .report-lead {
     max-width: 27rem;
-    margin: 0.45rem 0 0;
+    margin: clamp(0.3rem, 1vh, 0.45rem) 0 0;
     color: var(--report-muted);
-    font-size: clamp(0.82rem, 1.6vw, 0.9rem);
-    line-height: 1.95;
+    font-size: clamp(0.8rem, 1.7vh, 0.9rem);
+    line-height: 1.85;
 }
 
 .report-gauge {
     position: relative;
     display: grid;
-    width: clamp(12rem, 42vw, 14.5rem);
+    width: clamp(8rem, min(42vw, 27vh), 14.5rem);
     aspect-ratio: 1;
     flex: 0 0 auto;
     place-items: center;
-    margin: 1.4rem 0 0.2rem;
+    margin: clamp(0.7rem, 2.2vh, 1.4rem) 0 0.2rem;
 }
 
 .report-gauge__svg {
@@ -335,24 +338,47 @@
     pointer-events: none;
 }
 
+/* Persian numerals: Vazirmatn's ss01 set draws the more elegant ۴/۶ glyphs, and
+   Persian digits need a touch of extra tracking instead of latin negative kerning. */
 .report-gauge__value {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.12em;
     color: var(--report-accent-soft);
-    font-size: clamp(1.85rem, 6vw, 2.5rem);
-    font-variant-numeric: tabular-nums;
-    font-weight: 900;
-    letter-spacing: -0.02em;
-    line-height: 1.1;
+    font-family: 'Vazirmatn', Tahoma, Arial, sans-serif;
+    font-feature-settings: 'ss01' 1, 'ss02' 1, 'ss03' 1;
+    font-variant-numeric: normal;
+    font-weight: 800;
+    line-height: 1.15;
     transition: color 500ms ease;
+}
+
+.report-gauge__number {
+    background: linear-gradient(96deg, var(--report-accent-soft) 6%, var(--report-cyan) 96%);
+    background-clip: text;
+    -webkit-background-clip: text;
+    color: transparent;
+    filter: drop-shadow(0 0.35rem 1.4rem rgba(var(--report-accent-rgb), 0.28));
+    font-size: clamp(1.7rem, 6.4vh, 2.6rem);
+    font-weight: 900;
+    letter-spacing: 0.01em;
+}
+
+.report-gauge__unit {
+    color: var(--report-accent-soft);
+    font-size: clamp(0.9rem, 2.8vh, 1.25rem);
+    font-weight: 700;
+    opacity: 0.85;
 }
 
 .report-gauge__spinner {
     color: var(--report-accent-soft);
-    font-size: 2rem;
+    font-size: clamp(1.5rem, 4vh, 2rem);
 }
 
 .report-gauge__caption {
     color: #8795aa;
-    font-size: 0.74rem;
+    font-size: clamp(0.68rem, 1.5vh, 0.74rem);
     font-weight: 700;
     letter-spacing: 0.06em;
 }
@@ -362,7 +388,7 @@
     width: 100%;
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 0.55rem;
-    margin: 1.2rem 0 0;
+    margin: clamp(0.6rem, 2vh, 1.2rem) 0 0;
 }
 
 .report-metric {
@@ -403,9 +429,14 @@
     margin: 0;
     color: #eef4fb;
     font-size: 0.88rem;
-    font-variant-numeric: tabular-nums;
     font-weight: 900;
     white-space: nowrap;
+}
+
+.report-metric__number {
+    font-feature-settings: 'ss01' 1, 'ss02' 1, 'ss03' 1;
+    font-variant-numeric: normal;
+    letter-spacing: 0.01em;
 }
 
 .report-metric--status dd {
@@ -416,8 +447,8 @@
 .report-action.ant-btn {
     position: relative;
     isolation: isolate;
-    min-height: 3.3rem;
-    margin-top: 1.15rem;
+    min-height: clamp(2.8rem, 6.4vh, 3.3rem);
+    margin-top: clamp(0.7rem, 2vh, 1.15rem);
     overflow: hidden;
     border: 0 !important;
     border-radius: 0.95rem !important;
@@ -497,7 +528,7 @@
 
 .report-footer {
     display: flex;
-    min-height: 3rem;
+    min-height: clamp(2rem, 5vh, 3rem);
     flex: 0 0 auto;
     flex-wrap: wrap;
     align-items: center;
@@ -684,6 +715,27 @@
         border-radius: 1.5rem;
     }
 
+    .report-metric {
+        padding: 0.6rem 0.45rem;
+    }
+
+    .report-metric dt {
+        font-size: 0.66rem;
+    }
+
+    .report-footer {
+        gap: 0.45rem;
+        font-size: 0.7rem;
+    }
+
+    .report-footer__separator {
+        display: none;
+    }
+}
+
+/* Only stack the metrics when there is vertical room for the extra rows —
+   otherwise the card would grow past the viewport. */
+@media (max-width: 40rem) and (min-height: 46rem) {
     .report-metrics {
         grid-template-columns: minmax(0, 1fr);
         gap: 0.45rem;
@@ -698,47 +750,19 @@
 
     .report-metric dt {
         justify-content: flex-start;
-    }
-
-    .report-footer {
-        gap: 0.45rem;
         font-size: 0.7rem;
-    }
-
-    .report-footer__separator {
-        display: none;
     }
 }
 
-@media (max-height: 46rem) {
-    .report-gauge {
-        width: clamp(9.5rem, 32vw, 11.5rem);
-        margin-top: 1rem;
+/* Last-resort trims for very short windows. */
+@media (max-height: 32rem) {
+    .report-lead,
+    .report-gauge__caption {
+        display: none;
     }
 
-    .report-emblem {
-        width: 3.6rem;
-        height: 3.6rem;
-        border-radius: 1.2rem;
-        font-size: 1.5rem;
-    }
-
-    .report-eyebrow {
-        margin-top: 0.7rem;
-    }
-
-    .report-lead {
-        margin-top: 0.35rem;
-        line-height: 1.8;
-    }
-
-    .report-metrics {
-        margin-top: 0.85rem;
-    }
-
-    .report-action.ant-btn {
-        min-height: 3rem;
-        margin-top: 0.85rem;
+    .report-brand__copy > span {
+        display: none;
     }
 }
 
