@@ -19,6 +19,7 @@ import {
   SoundOutlined
 } from '@ant-design/icons';
 import { findValidSession } from "../api/probes.js";
+import { useLockedViewport } from "../hooks/useLockedViewport.js";
 import {
   APP_ROUTE,
   parsePhase,
@@ -59,9 +60,12 @@ const interventionInstructions = [
 const CHAR_BUFFER = 35; // Equivalent to adding 35 characters of 'silence' to every line.
 
 const styles = {
+  // `dvh` keeps the layout correct in fullscreen and on mobile browsers whose
+  // toolbars change the usable viewport height.
   backgroundWrapper: {
-    height: '100vh',
-    width: '100vw',
+    height: '100dvh',
+    maxHeight: '100dvh',
+    width: '100%',
     background: 'radial-gradient(circle at 50% 10%, #134e4a 0%, #0f172a 60%, #020617 100%)',
     display: 'flex',
     flexDirection: 'column',
@@ -75,9 +79,10 @@ const styles = {
     width: '100%',
     maxWidth: 1300,
     height: 'auto',
-    maxHeight: '85vh',
+    maxHeight: 'calc(100dvh - 90px)',
     display: 'flex',
     flexDirection: 'column',
+    minHeight: 0,
     background: 'rgba(15, 23, 42, 0.7)',
     backdropFilter: 'blur(20px)',
     WebkitBackdropFilter: 'blur(20px)',
@@ -91,11 +96,13 @@ const styles = {
   },
   contentContainer: {
     flex: 1,
+    minHeight: 0,
     display: 'flex',
     flexDirection: 'column',
     justifyContent: 'flex-start',
     paddingTop: '20px',
     overflowY: 'auto',
+    overscrollBehavior: 'contain',
   },
   submitButton: {
     height: 55,
@@ -149,9 +156,15 @@ const styles = {
   }
 };
 
+const AUDIO_PROMPT_TOAST_ID = 'instruction-toast';
+
 const InstructionsScreen = () => {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
+
+  // The card manages its own overflow; the document itself must stay put so the
+  // layout is identical in windowed and fullscreen mode.
+  useLockedViewport();
 
   // Animation & Audio State
   const [hasStarted, setHasStarted] = useState(false);
@@ -262,22 +275,38 @@ const InstructionsScreen = () => {
         </div>
     );
 
-    // Show Persistent Toast on Mount (Top-Right)
-    toastId.current = toast(
-        <CustomToast />,
-        {
-          theme: "dark",
-          autoClose: false,
-          closeOnClick: false,
-          draggable: false,
-          closeButton: false, // Remove default X button for cleaner look
-          position: "top-right",
-          className: "custom-toast-container",
-          toastId: "instruction-toast"
-        }
-    );
+    const showPlayPrompt = () => {
+      toastId.current = toast(
+          <CustomToast />,
+          {
+            theme: "dark",
+            autoClose: false,
+            closeOnClick: false,
+            draggable: false,
+            closeButton: false, // Remove default X button for cleaner look
+            position: "top-right",
+            className: "custom-toast-container",
+            toastId: AUDIO_PROMPT_TOAST_ID
+          }
+      );
+    };
+
+    // Try to narrate immediately. Entering the exam always involves a click
+    // (registration, fullscreen, "next phase"), so the document usually carries a
+    // user activation and playback is allowed. When a browser still blocks it, the
+    // persistent prompt asks the participant to start the narration by hand — the
+    // text reveal is driven by audio progress either way.
+    let isCancelled = false;
+
+    audio.play().catch((playError) => {
+      if (isCancelled) return;
+
+      console.warn('Instruction narration could not start automatically', playError);
+      showPlayPrompt();
+    });
 
     return () => {
+      isCancelled = true;
       audio.removeEventListener('play', handlePlay);
       audio.removeEventListener('pause', handlePause);
       audio.removeEventListener('timeupdate', handleTimeUpdate);
@@ -304,7 +333,7 @@ const InstructionsScreen = () => {
 
     try {
       await audio.play();
-      toast.dismiss("instruction-toast");
+      toast.dismiss(AUDIO_PROMPT_TOAST_ID);
     } catch (error) {
       setIsPlaying(false);
       console.error("Audio play error", error);
