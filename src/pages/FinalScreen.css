@@ -1,0 +1,348 @@
+.final-page {
+    --final-accent: #2dd4bf;
+    --final-accent-soft: #5eead4;
+    --final-accent-rgb: 45, 212, 191;
+    position: relative;
+    isolation: isolate;
+    display: flex;
+    width: 100%;
+    min-width: 20rem;
+    height: 100dvh;
+    max-height: 100dvh;
+    flex-direction: column;
+    overflow: hidden;
+    background:
+        radial-gradient(circle at 12% 18%, rgba(19, 78, 74, 0.55), transparent 34rem),
+        radial-gradient(circle at 88% 88%, rgba(37, 99, 235, 0.16), transparent 32rem),
+        linear-gradient(150deg, #071323 0%, #0b1626 48%, #020617 100%);
+    color: #f1f5f9;
+    font-family: 'Vazirmatn', Tahoma, Arial, sans-serif;
+}
+
+.final-page *,
+.final-page *::before,
+.final-page *::after {
+    box-sizing: border-box;
+}
+
+.final-backdrop,
+.final-backdrop > span {
+    position: absolute;
+    pointer-events: none;
+}
+
+.final-backdrop {
+    z-index: -1;
+    inset: 0;
+    overflow: hidden;
+}
+
+.final-backdrop__grid {
+    inset: 0;
+    opacity: 0.07;
+    background-image: radial-gradient(var(--final-accent) 1px, transparent 1px);
+    background-size: 2.5rem 2.5rem;
+}
+
+.final-backdrop__glow {
+    border-radius: 999px;
+    filter: blur(7.5rem);
+}
+
+.final-backdrop__glow--teal {
+    top: -20%;
+    left: -10%;
+    width: 60vw;
+    height: 60vw;
+    background: rgba(20, 184, 166, 0.12);
+    animation: final-glow-breathe 16s ease-in-out infinite;
+}
+
+.final-backdrop__glow--blue {
+    right: -10%;
+    bottom: -12%;
+    width: 42vw;
+    height: 42vw;
+    background: rgba(59, 130, 246, 0.1);
+    animation: final-glow-breathe 20s ease-in-out infinite reverse;
+}
+
+.final-backdrop__glow--center {
+    top: 50%;
+    left: 50%;
+    width: 32vw;
+    height: 32vw;
+    translate: -50% -50%;
+    background: rgba(var(--final-accent-rgb), 0.06);
+}
+
+.final-shell {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    width: min(100% - 2rem, 34rem);
+    height: 100%;
+    min-height: 0;
+    margin-inline: auto;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: clamp(0.7rem, 2vh, 1.4rem);
+    padding-block: clamp(0.7rem, 2vh, 1.5rem);
+}
+
+.final-card {
+    position: relative;
+    display: flex;
+    width: 100%;
+    min-height: 0;
+    flex: 0 1 auto;
+    flex-direction: column;
+    align-items: center;
+    padding: clamp(1.3rem, 3.4vh, 2.6rem) clamp(1.2rem, 3vw, 2.4rem);
+    overflow: hidden;
+    border: 1px solid rgba(var(--final-accent-rgb), 0.2);
+    border-radius: clamp(1.25rem, 2.4vh, 1.85rem);
+    background:
+        linear-gradient(148deg, rgba(15, 23, 42, 0.94), rgba(7, 15, 30, 0.92)),
+        rgba(2, 6, 23, 0.9);
+    box-shadow:
+        0 2rem 4rem rgba(0, 0, 0, 0.6),
+        0 0 0 1px rgba(255, 255, 255, 0.03) inset,
+        0 1px 0 rgba(255, 255, 255, 0.07) inset;
+    backdrop-filter: blur(28px);
+    -webkit-backdrop-filter: blur(28px);
+    text-align: center;
+}
+
+.final-card__sheen {
+    position: absolute;
+    top: 0;
+    right: 12%;
+    left: 12%;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(var(--final-accent-rgb), 0.55), transparent);
+}
+
+.final-emblem {
+    position: relative;
+    display: grid;
+    width: clamp(4rem, 11vh, 6.6rem);
+    height: clamp(4rem, 11vh, 6.6rem);
+    flex: 0 0 auto;
+    place-items: center;
+    margin-bottom: clamp(0.85rem, 2.4vh, 2rem);
+}
+
+.final-emblem__halo,
+.final-emblem__ring {
+    position: absolute;
+    border-radius: 50%;
+}
+
+.final-emblem__halo {
+    inset: -14%;
+    background: radial-gradient(circle, rgba(var(--final-accent-rgb), 0.28) 0%, transparent 70%);
+    filter: blur(8px);
+}
+
+.final-emblem__ring {
+    inset: -5%;
+    border: 1px solid rgba(var(--final-accent-rgb), 0.4);
+}
+
+.final-emblem__core {
+    display: grid;
+    width: 100%;
+    height: 100%;
+    place-items: center;
+    border: 1px solid rgba(var(--final-accent-rgb), 0.25);
+    border-radius: 50%;
+    background: linear-gradient(135deg, rgba(var(--final-accent-rgb), 0.14) 0%, rgba(16, 185, 129, 0.14) 100%);
+    box-shadow: 0 0.5rem 2rem rgba(var(--final-accent-rgb), 0.16), 0 1px 0 rgba(255, 255, 255, 0.08) inset;
+    color: var(--final-accent);
+}
+
+.final-emblem__core svg {
+    width: 52%;
+    height: 52%;
+}
+
+.final-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.3rem 0.85rem;
+    border: 1px solid rgba(var(--final-accent-rgb), 0.22);
+    border-radius: 999px;
+    background: rgba(var(--final-accent-rgb), 0.08);
+    color: var(--final-accent);
+    font-size: 0.7rem;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+}
+
+.final-badge__dot {
+    width: 0.42rem;
+    height: 0.42rem;
+    border-radius: 999px;
+    background: var(--final-accent);
+    box-shadow: 0 0 0.4rem var(--final-accent);
+}
+
+.final-card h1 {
+    margin: clamp(0.6rem, 1.6vh, 1.1rem) 0 0;
+    color: #f1f5f9;
+    font-size: clamp(1.15rem, 3vh, 1.6rem);
+    font-weight: 900;
+    line-height: 1.45;
+    text-shadow: 0 2px 20px rgba(var(--final-accent-rgb), 0.15);
+    text-wrap: balance;
+}
+
+.final-lead {
+    max-width: 26rem;
+    margin: clamp(0.4rem, 1.2vh, 0.85rem) 0 0;
+    color: #94a3b8;
+    font-size: clamp(0.8rem, 1.7vh, 0.93rem);
+    line-height: 1.8;
+}
+
+.final-note {
+    margin: 0.35rem 0 0;
+    color: #64748b;
+    font-size: clamp(0.72rem, 1.5vh, 0.81rem);
+    line-height: 1.7;
+}
+
+.final-divider {
+    width: 100%;
+    height: 1px;
+    margin: clamp(0.9rem, 2.4vh, 1.9rem) 0 0;
+    background: linear-gradient(90deg, transparent, rgba(var(--final-accent-rgb), 0.22), transparent);
+}
+
+.final-actions {
+    display: grid;
+    width: 100%;
+    gap: 0.6rem;
+    margin-top: clamp(0.85rem, 2vh, 1.6rem);
+}
+
+.final-action.ant-btn {
+    display: flex;
+    width: 100%;
+    min-height: clamp(2.9rem, 6vh, 3.4rem);
+    align-items: center;
+    justify-content: center;
+    gap: 0.6rem;
+    border: 0 !important;
+    border-radius: 0.9rem !important;
+    background: linear-gradient(135deg, #0f766e 0%, #2dd4bf 100%) !important;
+    box-shadow: 0 0.25rem 1.25rem rgba(var(--final-accent-rgb), 0.35), 0 1px 0 rgba(255, 255, 255, 0.15) inset !important;
+    color: #04211f;
+    font-size: clamp(0.85rem, 1.8vh, 1rem);
+    font-weight: 800;
+    letter-spacing: 0.02em;
+    transition: transform 180ms ease, box-shadow 180ms ease, filter 180ms ease !important;
+}
+
+.final-action.ant-btn:not(:disabled):hover {
+    transform: translateY(-1px);
+    filter: brightness(1.05);
+    box-shadow: 0 0.4rem 1.75rem rgba(var(--final-accent-rgb), 0.5), 0 1px 0 rgba(255, 255, 255, 0.2) inset !important;
+}
+
+.final-action.ant-btn:focus-visible {
+    outline: 3px solid rgba(103, 232, 249, 0.44);
+    outline-offset: 3px;
+}
+
+.final-action__icon {
+    width: 1.05rem;
+    height: 1.05rem;
+}
+
+.final-footer {
+    display: flex;
+    flex: 0 0 auto;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 0.76rem;
+}
+
+.final-footer__chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.35rem 0.8rem;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.04);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    white-space: nowrap;
+}
+
+.final-footer__chip .anticon {
+    color: var(--final-accent);
+    font-size: 0.85rem;
+}
+
+.final-footer__separator {
+    width: 1px;
+    height: 1rem;
+    background: rgba(255, 255, 255, 0.15);
+}
+
+@keyframes final-glow-breathe {
+    0%,
+    100% {
+        opacity: 0.8;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 1;
+        transform: scale(1.07);
+    }
+}
+
+/* Short viewports: drop the optional copy before anything can overflow. */
+@media (max-height: 34rem) {
+    .final-note,
+    .final-backdrop__grid {
+        display: none;
+    }
+
+    .final-lead {
+        line-height: 1.6;
+    }
+}
+
+@media (max-width: 30rem) {
+    .final-footer {
+        gap: 0.5rem;
+        font-size: 0.72rem;
+    }
+
+    .final-footer__separator {
+        display: none;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .final-backdrop__glow {
+        animation: none !important;
+    }
+
+    .final-action.ant-btn {
+        transition: none !important;
+    }
+
+    .final-action.ant-btn:not(:disabled):hover {
+        transform: none;
+    }
+}

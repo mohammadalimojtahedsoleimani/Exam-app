@@ -1,6 +1,8 @@
 import AppRoutes from './routes';
 import { CloseOutlined } from '@ant-design/icons';
 import { ToastContainer } from 'react-toastify';
+import FullscreenProvider from './context/FullscreenProvider.jsx';
+import FullscreenRestorePrompt from './components/FullscreenRestorePrompt.jsx';
 import 'react-toastify/dist/ReactToastify.css';
 
 const GLOBAL_TOAST_CONTAINER_ID = 'app-global';
@@ -21,7 +23,7 @@ const ToastCloseButton = ({ closeToast }) => (
 
 function App() {
   return (
-    <>
+    <FullscreenProvider>
       <ToastContainer
         containerId={GLOBAL_TOAST_CONTAINER_ID}
         position="top-center"
@@ -41,7 +43,8 @@ function App() {
         theme="dark"
       />
       <AppRoutes />
-    </>
+      <FullscreenRestorePrompt />
+    </FullscreenProvider>
   );
 }
 

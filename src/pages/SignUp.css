@@ -920,6 +920,15 @@
         padding-inline: 0.75rem;
     }
 
+    .signup-fullscreen .fs-control__label {
+        display: none;
+    }
+
+    .signup-fullscreen .fs-control__button {
+        min-width: 2.75rem;
+        padding-inline: 0.75rem;
+    }
+
     .signup-main-grid {
         padding-block: 1.1rem;
     }

@@ -1,149 +1,202 @@
 import React from 'react';
-import { Button, ConfigProvider, theme, Typography } from 'antd';
+import { ConfigProvider, theme } from 'antd';
+import faIR from 'antd/locale/fa_IR';
 import { Link } from 'react-router-dom';
-import { Home, FileQuestion } from 'lucide-react';
-import { motion as Motion } from 'framer-motion';
-import { BankOutlined, ExperimentOutlined } from '@ant-design/icons';
+import { motion as Motion, useReducedMotion } from 'framer-motion';
+import {
+    ArrowLeftOutlined,
+    BankOutlined,
+    BarChartOutlined,
+    CompassOutlined,
+    ExperimentOutlined,
+    HomeOutlined,
+    LinkOutlined,
+    ReloadOutlined,
+    SafetyCertificateOutlined,
+} from '@ant-design/icons';
+import mainlogo from '../assets/mainlogo.png';
+import infs from '../assets/infs.png';
+import { useLockedViewport } from '../hooks/useLockedViewport.js';
+import { APP_ROUTE } from '../utils/phaseFlow.js';
+import './NotFound.css';
 
-const { Title, Text } = Typography;
+const recoverySteps = [
+    {
+        icon: LinkOutlined,
+        title: 'نشانی صفحه را بررسی کنید',
+        description: 'ممکن است بخشی از آدرس هنگام کپی جا افتاده باشد.',
+    },
+    {
+        icon: ReloadOutlined,
+        title: 'صفحه را دوباره باز کنید',
+        description: 'گاهی یک بار تازه‌سازی، مشکل را برطرف می‌کند.',
+    },
+    {
+        icon: SafetyCertificateOutlined,
+        title: 'از مسیر اصلی وارد شوید',
+        description: 'برای شروع آزمون به صفحه ثبت‌نام بازگردید.',
+    },
+];
 
 const NotFound = () => {
+    const reduceMotion = useReducedMotion();
 
-    const styles = {
-        backgroundWrapper: {
-            minHeight: '100vh',
-            width: '100vw',
-            background: 'radial-gradient(circle at 50% 10%, #134e4a 0%, #0f172a 60%, #020617 100%)',
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'center',
-            alignItems: 'center',
-            position: 'relative',
-            overflow: 'hidden',
-            fontFamily: "'Vazirmatn', sans-serif",
-        },
-        glassCard: {
-            background: 'rgba(15, 23, 42, 0.6)',
-            backdropFilter: 'blur(20px)',
-            border: '1px solid rgba(45, 212, 191, 0.2)',
-            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.6)',
-            borderRadius: '24px',
-            padding: '50px 40px',
-            maxWidth: '500px',
-            width: '90%',
-            textAlign: 'center',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            zIndex: 10
-        },
-        primaryButton: {
-            background: 'linear-gradient(135deg, #0f766e 0%, #2dd4bf 100%)',
-            border: 'none',
-            height: '55px',
-            fontSize: '18px',
-            fontWeight: 'bold',
-            marginTop: '30px',
-            width: '100%',
-            boxShadow: '0 4px 15px rgba(13, 148, 136, 0.4)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '10px'
-        },
-        footer: {
-            position: 'absolute',
-            bottom: '20px',
-            width: '100%',
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            gap: '20px',
-            color: 'rgba(255, 255, 255, 0.5)',
-            fontSize: '13px',
-            zIndex: 10
-        }
-    };
+    // Single-screen layout: never let the document scroll.
+    useLockedViewport();
+
+    const enterTransition = reduceMotion
+        ? { duration: 0 }
+        : { duration: 0.42, ease: [0.22, 1, 0.36, 1] };
 
     return (
         <ConfigProvider
+            direction="rtl"
+            locale={faIR}
+            componentSize="large"
             theme={{
                 algorithm: theme.darkAlgorithm,
                 token: {
                     colorPrimary: '#2dd4bf',
-                    fontFamily: "'Vazirmatn', sans-serif",
+                    colorBgBase: '#020617',
+                    colorTextBase: '#f8fafc',
+                    borderRadius: 14,
+                    fontFamily: "'Vazirmatn', Tahoma, sans-serif",
+                    motion: !reduceMotion,
                 },
             }}
         >
-            <div style={styles.backgroundWrapper}>
-
-                {/* --- Ambient Background Glows --- */}
-                <div className="absolute top-[-20%] left-[-10%] w-[50vw] h-[50vw] rounded-full bg-[#14b8a6] opacity-10 blur-[150px] pointer-events-none"></div>
-                <div className="absolute bottom-[-10%] right-[-10%] w-[40vw] h-[40vw] rounded-full bg-[#3b82f6] opacity-10 blur-[150px] pointer-events-none"></div>
-
-                {/* --- Glass Card Content --- */}
-                <Motion.div
-                    initial={{ opacity: 0, y: 30 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.6 }}
-                    style={styles.glassCard}
-                >
-
-                    {/* Animated 404 Icon */}
-                    <Motion.div
-                        initial={{ scale: 0 }}
-                        animate={{ scale: 1 }}
-                        transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
-                        className="mb-6 relative"
-                    >
-                        {/* Glow effect behind icon */}
-                        <div className="absolute inset-0 bg-[#2dd4bf] blur-2xl opacity-20 rounded-full"></div>
-
-                        <div className="relative p-6 rounded-full bg-gradient-to-br from-teal-500/10 to-emerald-500/10 border border-[#2dd4bf]/30">
-                            <FileQuestion className="w-20 h-20 text-[#2dd4bf]" strokeWidth={1.5} />
-                        </div>
-                    </Motion.div>
-
-                    {/* Text */}
-                    <Title level={1} style={{ color: '#2dd4bf', margin: 0, fontSize: '4rem', lineHeight: 1 }}>
-                        404
-                    </Title>
-                    <Title level={3} style={{ color: '#f8fafc', marginTop: '10px', marginBottom: '5px' }}>
-                        صفحه مورد نظر پیدا نشد
-                    </Title>
-
-                    <Text style={{ color: '#94a3b8', fontSize: '16px', display: 'block', maxWidth: '300px' }}>
-                        آدرس وارد شده صحیح نمی‌باشد یا صفحه حذف شده است.
-                    </Text>
-
-                    {/* Action Button */}
-                    <Link to="/" style={{ width: '100%' }}>
-                        <Button
-                            type="primary"
-                            size="large"
-                            style={styles.primaryButton}
-                        >
-                            <span>بازگشت به صفحه اصلی</span>
-                            <Home className="w-5 h-5" />
-                        </Button>
-                    </Link>
-
-                </Motion.div>
-
-                {/* --- Unified Footer --- */}
-                <div style={styles.footer}>
-                    <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 backdrop-blur-sm">
-                        <BankOutlined style={{ color: '#2dd4bf' }} />
-                        <span>دانشگاه خوارزمی</span>
-                    </div>
-                    <div className="h-4 w-[1px] bg-white/20"></div>
-                    <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 backdrop-blur-sm">
-                        <ExperimentOutlined style={{ color: '#2dd4bf' }} />
-                        <span>بنیاد ملی علم</span>
-                    </div>
+            <main dir="rtl" className="nf-page">
+                <div className="nf-backdrop" aria-hidden="true">
+                    <span className="nf-backdrop__grid" />
+                    <span className="nf-backdrop__aurora" />
+                    <span className="nf-backdrop__glow nf-backdrop__glow--teal" />
+                    <span className="nf-backdrop__glow nf-backdrop__glow--blue" />
+                    <span className="nf-backdrop__beam" />
+                    <span className="nf-backdrop__dot nf-backdrop__dot--one" />
+                    <span className="nf-backdrop__dot nf-backdrop__dot--two" />
                 </div>
 
-            </div>
+                <div className="nf-shell">
+                    <Motion.header
+                        className="nf-topbar"
+                        initial={reduceMotion ? false : { opacity: 0, y: -12 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={enterTransition}
+                        aria-label="سربرگ سامانه"
+                    >
+                        <div className="nf-brand">
+                            <span className="nf-brand__mark">
+                                <img src={mainlogo} alt="" />
+                            </span>
+                            <span className="nf-brand__copy">
+                                <strong>سامانه آزمون پژوهشی</strong>
+                                <span>دانشگاه خوارزمی</span>
+                            </span>
+                        </div>
+
+                        <span className="nf-code-pill">
+                            <span className="nf-code-pill__dot" aria-hidden="true" />
+                            کد خطا ۴۰۴
+                        </span>
+                    </Motion.header>
+
+                    <Motion.section
+                        className="nf-card"
+                        initial={reduceMotion ? false : { opacity: 0, y: 24, scale: 0.985 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        transition={{ ...enterTransition, delay: reduceMotion ? 0 : 0.08 }}
+                        aria-labelledby="nf-title"
+                    >
+                        <span className="nf-card__sheen" aria-hidden="true" />
+                        <span className="nf-card__halo" aria-hidden="true" />
+
+                        <Motion.div
+                            className="nf-emblem"
+                            aria-hidden="true"
+                            initial={reduceMotion ? false : { opacity: 0, scale: 0.7 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            transition={reduceMotion
+                                ? { duration: 0 }
+                                : { delay: 0.18, type: 'spring', stiffness: 190, damping: 16 }}
+                        >
+                            <span className="nf-emblem__ring nf-emblem__ring--outer">
+                                <span className="nf-emblem__satellite" />
+                            </span>
+                            <span className="nf-emblem__ring nf-emblem__ring--inner">
+                                <span className="nf-emblem__satellite nf-emblem__satellite--blue" />
+                            </span>
+                            <span className="nf-emblem__core">
+                                <CompassOutlined />
+                            </span>
+                        </Motion.div>
+
+                        <p className="nf-code" aria-hidden="true">404</p>
+
+                        <h1 id="nf-title">صفحه مورد نظر پیدا نشد</h1>
+                        <p className="nf-lead">
+                            نشانی واردشده معتبر نیست یا این صفحه دیگر در دسترس نمی‌باشد. از گزینه‌های زیر مسیر خود را ادامه دهید.
+                        </p>
+
+                        <div className="nf-actions">
+                            <Link to={APP_ROUTE.SIGN_UP} className="nf-button nf-button--primary">
+                                <HomeOutlined aria-hidden="true" />
+                                <span>بازگشت به صفحه اصلی</span>
+                                <ArrowLeftOutlined className="nf-button__arrow" aria-hidden="true" />
+                            </Link>
+                            <Link to={APP_ROUTE.RESULTS} className="nf-button nf-button--ghost">
+                                <BarChartOutlined aria-hidden="true" />
+                                <span>مشاهده نتایج پژوهش</span>
+                            </Link>
+                        </div>
+
+                        <ul className="nf-steps" aria-label="راه‌های ادامه مسیر">
+                            {recoverySteps.map((step, index) => {
+                                const StepIcon = step.icon;
+
+                                return (
+                                    <Motion.li
+                                        className="nf-step"
+                                        key={step.title}
+                                        initial={reduceMotion ? false : { opacity: 0, y: 12 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        transition={{
+                                            ...enterTransition,
+                                            delay: reduceMotion ? 0 : 0.3 + index * 0.07,
+                                        }}
+                                    >
+                                        <span className="nf-step__icon" aria-hidden="true">
+                                            <StepIcon />
+                                        </span>
+                                        <span className="nf-step__copy">
+                                            <strong>{step.title}</strong>
+                                            <small>{step.description}</small>
+                                        </span>
+                                    </Motion.li>
+                                );
+                            })}
+                        </ul>
+                    </Motion.section>
+
+                    <footer className="nf-footer">
+                        <span className="nf-footer__chip">
+                            <BankOutlined aria-hidden="true" />
+                            دانشگاه خوارزمی
+                        </span>
+                        <span className="nf-footer__separator" aria-hidden="true" />
+                        <span className="nf-footer__chip">
+                            <span className="nf-footer__chip-mark" aria-hidden="true">
+                                <img src={infs} alt="" />
+                            </span>
+                            بنیاد ملی علم ایران
+                        </span>
+                        <span className="nf-footer__separator" aria-hidden="true" />
+                        <span className="nf-footer__chip">
+                            <ExperimentOutlined aria-hidden="true" />
+                            پروتکل پژوهشی
+                        </span>
+                    </footer>
+                </div>
+            </main>
         </ConfigProvider>
     );
 };

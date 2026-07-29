@@ -148,6 +148,7 @@ const ResultsToastContent = ({ type, title, message }) => {
   return (
     <div className={`results-toast-content results-toast-content--${type}`} dir="rtl">
       <span className="results-toast-content__icon" aria-hidden="true">
+        <span className="results-toast-content__pulse" />
         <Icon />
       </span>
       <span className="results-toast-content__copy">
@@ -167,12 +168,13 @@ const showResultsToast = ({ toastId, type, title, message, reduceMotion }) => {
     transition: reduceMotion ? ReducedMotionToastTransition : Slide,
     theme: 'dark',
     icon: false,
-    hideProgressBar: true,
+    hideProgressBar: false,
     autoClose: type === 'error' || type === 'warning' ? 5200 : 3800,
     closeButton: true,
     closeOnClick: true,
     draggable: 'touch',
     className: `app-toast app-toast--${type} results-toast`,
+    progressClassName: `app-toast__progress app-toast__progress--${type}`,
     role: type === 'error' || type === 'warning' ? 'alert' : 'status',
     ariaLabel: `${title}؛ ${message}`,
   };
@@ -250,7 +252,7 @@ const renderPaginationItem = (_, type, originalElement) => {
   );
 };
 
-const StatCard = ({ icon, label, value, tone, loading }) => (
+const StatCard = ({ icon, label, value, tone, loading, hint, share }) => (
   <div className={`results-stat results-stat--${tone}`} role="listitem">
     <span className="results-stat__icon" aria-hidden="true">{icon}</span>
     <span className="results-stat__copy">
@@ -260,7 +262,13 @@ const StatCard = ({ icon, label, value, tone, loading }) => (
           <span className="results-stat__skeleton" aria-label="در حال بارگذاری" />
         ) : value}
       </strong>
+      {!loading && hint && <span className="results-stat__hint">{hint}</span>}
     </span>
+    {!loading && share != null && (
+      <span className="results-stat__bar" aria-hidden="true">
+        <span className="results-stat__bar-fill" style={{ width: `${share}%` }} />
+      </span>
+    )}
   </div>
 );
 
@@ -687,11 +695,17 @@ export default function ParticipantsTable() {
       ? Math.round(ages.reduce((sum, age) => sum + age, 0) / ages.length)
       : '—';
 
+    const total = participants.length;
+    const toShare = count => (total > 0 ? Math.round((count / total) * 100) : 0);
+
     return {
-      total: participants.length,
+      total,
       females,
       males,
       averageAge,
+      femaleShare: toShare(females),
+      maleShare: toShare(males),
+      ageSampleSize: ages.length,
     };
   }, [participants]);
 
@@ -909,9 +923,12 @@ export default function ParticipantsTable() {
 
         <div className="results-backdrop" aria-hidden="true">
           <span className="results-backdrop__grid" />
+          <span className="results-backdrop__aurora" />
           <span className="results-backdrop__glow results-backdrop__glow--teal" />
           <span className="results-backdrop__glow results-backdrop__glow--blue" />
           <span className="results-backdrop__beam" />
+          <span className="results-backdrop__dot results-backdrop__dot--one" />
+          <span className="results-backdrop__dot results-backdrop__dot--two" />
         </div>
 
         <div className="results-shell">
@@ -935,14 +952,26 @@ export default function ParticipantsTable() {
               </span>
             </div>
 
-            <Button
-              className="results-back-button"
-              icon={<ArrowRightOutlined aria-hidden="true" />}
-              onClick={() => navigate(APP_ROUTE.SIGN_UP)}
-            >
-              <span className="results-back-button__full">بازگشت به ثبت‌نام</span>
-              <span className="results-back-button__compact">ثبت‌نام</span>
-            </Button>
+            <div className="results-topbar__actions">
+              <span
+                className={`results-status results-status--${loading ? 'syncing' : error ? 'offline' : 'live'}`}
+                role="status"
+              >
+                <span className="results-status__dot" aria-hidden="true" />
+                <span className="results-status__label">
+                  {loading ? 'در حال همگام‌سازی' : error ? 'ارتباط قطع است' : 'سامانه فعال است'}
+                </span>
+              </span>
+
+              <Button
+                className="results-back-button"
+                icon={<ArrowRightOutlined aria-hidden="true" />}
+                onClick={() => navigate(APP_ROUTE.SIGN_UP)}
+              >
+                <span className="results-back-button__full">بازگشت به ثبت‌نام</span>
+                <span className="results-back-button__compact">ثبت‌نام</span>
+              </Button>
+            </div>
           </Motion.header>
 
           <Motion.section
@@ -963,7 +992,12 @@ export default function ParticipantsTable() {
               <p>مرور اطلاعات ثبت‌نام، جست‌وجوی سریع و دریافت گزارش مراحل آزمون در یک نمای یکپارچه.</p>
             </div>
             <div className="results-hero__visual" aria-hidden="true">
-              <span className="results-hero__orbit" />
+              <span className="results-hero__orbit">
+                <span className="results-hero__satellite" />
+              </span>
+              <span className="results-hero__orbit results-hero__orbit--inner">
+                <span className="results-hero__satellite results-hero__satellite--blue" />
+              </span>
               <span className="results-hero__visual-icon"><DatabaseOutlined /></span>
               <span className="results-hero__visual-dot results-hero__visual-dot--one" />
               <span className="results-hero__visual-dot results-hero__visual-dot--two" />
@@ -982,6 +1016,7 @@ export default function ParticipantsTable() {
               icon={<UserOutlined />}
               label="کل شرکت‌کنندگان"
               value={stats.total.toLocaleString('fa-IR')}
+              hint="ثبت‌نام تأییدشده"
               tone="teal"
               loading={loading}
             />
@@ -989,6 +1024,8 @@ export default function ParticipantsTable() {
               icon={<WomanOutlined />}
               label="زنان"
               value={stats.females.toLocaleString('fa-IR')}
+              hint={`${stats.femaleShare.toLocaleString('fa-IR')}٪ از کل`}
+              share={stats.femaleShare}
               tone="pink"
               loading={loading}
             />
@@ -996,6 +1033,8 @@ export default function ParticipantsTable() {
               icon={<ManOutlined />}
               label="مردان"
               value={stats.males.toLocaleString('fa-IR')}
+              hint={`${stats.maleShare.toLocaleString('fa-IR')}٪ از کل`}
+              share={stats.maleShare}
               tone="blue"
               loading={loading}
             />
@@ -1005,6 +1044,9 @@ export default function ParticipantsTable() {
               value={typeof stats.averageAge === 'number'
                 ? stats.averageAge.toLocaleString('fa-IR')
                 : stats.averageAge}
+              hint={stats.ageSampleSize > 0
+                ? `بر پایه ${stats.ageSampleSize.toLocaleString('fa-IR')} رکورد`
+                : 'داده سنی ثبت نشده'}
               tone="violet"
               loading={loading}
             />
@@ -1039,6 +1081,7 @@ export default function ParticipantsTable() {
             transition={{ ...enterTransition, delay: reduceMotion ? 0 : 0.14 }}
           >
             <div className="results-workspace__sheen" aria-hidden="true" />
+            <div className="results-workspace__scan" aria-hidden="true" />
             <header className="results-workspace__header">
               <span className="results-workspace__title-icon" aria-hidden="true">
                 <BarChartOutlined />
@@ -1068,20 +1111,36 @@ export default function ParticipantsTable() {
                 />
               </label>
 
-              <Tooltip title={exportTooltip} placement="top">
-                <span className="results-export-wrap">
-                  <Button
-                    className="results-export-button"
-                    icon={downloadingCSV
-                      ? <LoadingOutlined spin={!reduceMotion} aria-hidden="true" />
-                      : <DownloadOutlined aria-hidden="true" />}
-                    disabled={exportDisabled}
-                    onClick={downloadCSV}
-                  >
-                    خروجی CSV
-                  </Button>
-                </span>
-              </Tooltip>
+              <div className="results-toolbar__actions">
+                <Tooltip title="دریافت دوباره فهرست از سرور" placement="top">
+                  <span className="results-refresh-wrap">
+                    <Button
+                      className="results-refresh-button"
+                      icon={<ReloadOutlined spin={loading && !reduceMotion} aria-hidden="true" />}
+                      disabled={loading}
+                      onClick={() => loadParticipants({ announce: true })}
+                      aria-label="به‌روزرسانی فهرست شرکت‌کنندگان"
+                    >
+                      <span className="results-refresh-button__label">به‌روزرسانی</span>
+                    </Button>
+                  </span>
+                </Tooltip>
+
+                <Tooltip title={exportTooltip} placement="top">
+                  <span className="results-export-wrap">
+                    <Button
+                      className="results-export-button"
+                      icon={downloadingCSV
+                        ? <LoadingOutlined spin={!reduceMotion} aria-hidden="true" />
+                        : <DownloadOutlined aria-hidden="true" />}
+                      disabled={exportDisabled}
+                      onClick={downloadCSV}
+                    >
+                      خروجی CSV
+                    </Button>
+                  </span>
+                </Tooltip>
+              </div>
             </div>
 
             <p className="results-workspace__hint">

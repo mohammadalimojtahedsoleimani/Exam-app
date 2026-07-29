@@ -1,0 +1,139 @@
+.fs-restore {
+    position: fixed;
+    z-index: 9000;
+    bottom: 1.1rem;
+    left: 50%;
+    display: flex;
+    width: min(calc(100vw - 1.5rem), 30rem);
+    align-items: center;
+    gap: 0.7rem;
+    padding: 0.65rem 0.75rem;
+    transform: translateX(-50%);
+    border: 1px solid rgba(45, 212, 191, 0.3);
+    border-radius: 1.1rem;
+    background: linear-gradient(145deg, rgba(15, 23, 42, 0.97), rgba(7, 15, 29, 0.97));
+    box-shadow: 0 1.35rem 3.6rem rgba(0, 0, 0, 0.42), 0 1px 0 rgba(255, 255, 255, 0.07) inset;
+    backdrop-filter: blur(22px);
+    -webkit-backdrop-filter: blur(22px);
+    color: #e2e8f0;
+    font-family: 'Vazirmatn', Tahoma, Arial, sans-serif;
+    animation: fs-restore-in 260ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.fs-restore__icon {
+    display: grid;
+    width: 2.3rem;
+    height: 2.3rem;
+    flex: 0 0 auto;
+    place-items: center;
+    border: 1px solid rgba(45, 212, 191, 0.28);
+    border-radius: 0.75rem;
+    background: rgba(45, 212, 191, 0.12);
+    color: #5eead4;
+    font-size: 1.05rem;
+}
+
+.fs-restore__copy {
+    display: grid;
+    min-width: 0;
+    flex: 1 1 auto;
+    gap: 0.1rem;
+    text-align: start;
+}
+
+.fs-restore__copy strong {
+    color: #f8fafc;
+    font-size: 0.82rem;
+    font-weight: 800;
+    line-height: 1.5;
+}
+
+.fs-restore__copy small {
+    color: #9fb0c4;
+    font-size: 0.72rem;
+    line-height: 1.6;
+}
+
+.fs-restore__action {
+    flex: 0 0 auto;
+    min-height: 2.3rem;
+    padding-inline: 0.95rem;
+    border: 0;
+    border-radius: 0.75rem;
+    background: linear-gradient(100deg, #0f766e 0%, #0e7490 55%, #2563eb 120%);
+    box-shadow: 0 0.55rem 1.4rem rgba(8, 145, 178, 0.28);
+    color: #fff;
+    font-size: 0.76rem;
+    font-weight: 800;
+    cursor: pointer;
+    transition: filter 180ms ease, transform 180ms ease;
+}
+
+.fs-restore__action:hover:not(:disabled) {
+    transform: translateY(-1px);
+    filter: brightness(1.08);
+}
+
+.fs-restore__action:disabled {
+    opacity: 0.65;
+    cursor: progress;
+}
+
+.fs-restore__dismiss {
+    display: grid;
+    width: 2rem;
+    height: 2rem;
+    flex: 0 0 auto;
+    place-items: center;
+    border: 0;
+    border-radius: 0.65rem;
+    background: transparent;
+    color: #7e8da3;
+    cursor: pointer;
+    transition: background 180ms ease, color 180ms ease;
+}
+
+.fs-restore__dismiss:hover {
+    background: rgba(255, 255, 255, 0.06);
+    color: #fff;
+}
+
+.fs-restore__action:focus-visible,
+.fs-restore__dismiss:focus-visible {
+    outline: 2px solid rgba(103, 232, 249, 0.5);
+    outline-offset: 2px;
+    color: #fff;
+}
+
+@keyframes fs-restore-in {
+    from {
+        opacity: 0;
+        transform: translate(-50%, 0.6rem);
+    }
+    to {
+        opacity: 1;
+        transform: translate(-50%, 0);
+    }
+}
+
+@media (max-width: 30rem) {
+    .fs-restore {
+        gap: 0.55rem;
+        padding: 0.6rem;
+    }
+
+    .fs-restore__copy small {
+        display: none;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .fs-restore {
+        animation: none;
+    }
+
+    .fs-restore__action,
+    .fs-restore__dismiss {
+        transition: none;
+    }
+}

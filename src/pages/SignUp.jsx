@@ -15,6 +15,8 @@ import {
 import { motion as Motion, useReducedMotion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import ProgressiveForm from '../components/ProgressiveForm.jsx';
+import FullscreenButton from '../components/FullscreenButton.jsx';
+import { useFullscreenPromptPause } from '../context/fullscreenContext.js';
 import mainlogo from '../assets/mainlogo.png';
 import infs from '../assets/infs.png';
 import { APP_ROUTE } from '../utils/phaseFlow.js';
@@ -46,6 +48,11 @@ const heroStats = [
 
 const SignUp = () => {
     const reduceMotion = useReducedMotion();
+
+    // The header already exposes a fullscreen control, so the floating restore
+    // chip would only duplicate it here.
+    useFullscreenPromptPause();
+
     const enterTransition = reduceMotion
         ? { duration: 0 }
         : { duration: 0.42, ease: [0.22, 1, 0.36, 1] };
@@ -144,6 +151,12 @@ const SignUp = () => {
                                 <span className="signup-status__dot" aria-hidden="true" />
                                 <span className="signup-status__label">سامانه فعال است</span>
                             </span>
+
+                            <FullscreenButton
+                                mode="toggle"
+                                variant="chip"
+                                className="signup-fullscreen"
+                            />
 
                             <Link
                                 to={APP_ROUTE.RESULTS}
