@@ -316,7 +316,7 @@
     background: linear-gradient(145deg, rgba(13, 148, 136, 0.2), rgba(37, 99, 235, 0.16));
     box-shadow: 0 1.2rem 3rem rgba(0, 0, 0, 0.24), 0 0 2.6rem rgba(45, 212, 191, 0.14);
     color: var(--nf-cyan);
-    font-size: 1.85rem;
+    font-size: clamp(1.15rem, 3.2vh, 1.85rem);
 }
 
 .nf-code {

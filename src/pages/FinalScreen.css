@@ -240,10 +240,11 @@
     border-radius: 0.9rem !important;
     background: linear-gradient(135deg, #0f766e 0%, #2dd4bf 100%) !important;
     box-shadow: 0 0.25rem 1.25rem rgba(var(--final-accent-rgb), 0.35), 0 1px 0 rgba(255, 255, 255, 0.15) inset !important;
-    color: #04211f;
+    color: #fff;
     font-size: clamp(0.85rem, 1.8vh, 1rem);
     font-weight: 800;
     letter-spacing: 0.02em;
+    text-shadow: 0 1px 0 rgba(0, 0, 0, 0.18);
     transition: transform 180ms ease, box-shadow 180ms ease, filter 180ms ease !important;
 }
 
