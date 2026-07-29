@@ -40,6 +40,7 @@ import { cssTransition, Slide, toast } from 'react-toastify';
 import { useNavigate } from 'react-router-dom';
 import mainlogo from '../assets/mainlogo.png';
 import infs from '../assets/infs.png';
+import FullscreenButton from '../components/FullscreenButton.jsx';
 import { API_SERVER } from '../utils/API_SERVER.js';
 import { APP_ROUTE } from '../utils/phaseFlow.js';
 import './TableResults.css';
@@ -962,6 +963,12 @@ export default function ParticipantsTable() {
                   {loading ? 'در حال همگام‌سازی' : error ? 'ارتباط قطع است' : 'سامانه فعال است'}
                 </span>
               </span>
+
+              <FullscreenButton
+                mode="toggle"
+                variant="chip"
+                className="results-fullscreen"
+              />
 
               <Button
                 className="results-back-button"

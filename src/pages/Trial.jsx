@@ -75,6 +75,7 @@ const collectClusterImageSources = (clusters = []) => {
 const preloadStimulusImage = (src) => new Promise((resolve) => {
     const image = new Image();
     let isSettled = false;
+    let timer = 0;
 
     const settle = () => {
         if (isSettled) return;
@@ -83,7 +84,8 @@ const preloadStimulusImage = (src) => new Promise((resolve) => {
         resolve(image);
     };
 
-    const timer = setTimeout(settle, IMAGE_PRELOAD_TIMEOUT);
+    // A stalled asset must not hold the exam hostage.
+    timer = setTimeout(settle, IMAGE_PRELOAD_TIMEOUT);
 
     image.decoding = 'sync';
     if ('fetchPriority' in image) image.fetchPriority = 'high';
@@ -758,7 +760,7 @@ const Trial = () => {
                                 size="large"
                                 onClick={() => {
                                     setFlowError('');
-                                    setGlobalStatus('PREPARING');
+                                    setGlobalStatus(areStimuliReady ? 'TEST' : 'PREPARING');
                                 }}
                                 style={{...styles.primaryButton, minWidth: '180px'}}
                             >

@@ -370,6 +370,13 @@
   display: none;
 }
 
+/* Align the shared fullscreen chip with the other top-bar controls. */
+.results-fullscreen .fs-control__button {
+  min-height: 2.8rem;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
 .results-hero {
   position: relative;
   display: flex;
@@ -1761,6 +1768,15 @@
 
   .results-back-button__compact {
     display: inline;
+  }
+
+  .results-fullscreen .fs-control__label {
+    display: none;
+  }
+
+  .results-fullscreen .fs-control__button {
+    min-width: 2.6rem;
+    padding-inline: 0.7rem;
   }
 
   .results-hero__eyebrow {
