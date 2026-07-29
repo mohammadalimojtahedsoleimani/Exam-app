@@ -212,7 +212,12 @@ const Trial = () => {
     // evict a bitmap between trials.
     const decodedStimuliRef = useRef([]);
 
-    const isStimulusScreen = globalStatus === 'TEST' || globalStatus === 'PREPARING';
+    // The stage stays mounted between trials so the stimulus elements — and their
+    // rasterised layers — survive the answer round trip.
+    const isStageMounted = globalStatus === 'TEST' || globalStatus === 'SAVING_ANSWER';
+    const isStimulusScreen = isStageMounted
+        || globalStatus === 'PREPARING'
+        || globalStatus === 'FINISHED';
 
     // No document scrolling and no fullscreen nudges while stimuli are on screen.
     useLockedViewport(isStimulusScreen);
@@ -781,7 +786,7 @@ const Trial = () => {
                 )}
 
 
-                {globalStatus === 'TEST' && currentTrial && (
+                {isStageMounted && currentTrial && (
                     /* Deliberately not keyed per trial: reusing the same elements
                        lets the next pair of sources swap in during the fixation
                        cross instead of on the presentation frame. */
@@ -789,7 +794,7 @@ const Trial = () => {
                         leftImage={stimulus.leftImage}
                         rightImage={stimulus.rightImage}
                         targetPosition={stimulus.targetPosition}
-                        phase={trialPhase}
+                        phase={globalStatus === 'TEST' ? trialPhase : 'IDLE'}
                     />
                 )}
 
