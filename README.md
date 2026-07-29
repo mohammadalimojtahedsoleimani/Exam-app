@@ -27,7 +27,9 @@
 
 - [About the project](#about-the-project)
 - [Experiment method](#experiment-method)
+- [Stimulus presentation pipeline](#stimulus-presentation-pipeline)
 - [Four-phase participant flow](#four-phase-participant-flow)
+- [Fullscreen presentation mode](#fullscreen-presentation-mode)
 - [Core features](#core-features)
 - [Implementation methods](#implementation-methods)
 - [Technology stack](#technology-stack)
@@ -91,7 +93,12 @@ The participant responds using the keyboard:
 | Left | `D` or `ArrowLeft` | `LEFT` |
 | Right | `K` or `ArrowRight` | `RIGHT` |
 
-Timing begins when the target appears and uses `performance.now()` for high-resolution measurement. The rounded response time is submitted in milliseconds:
+Both ends of the measured interval are taken as close to the real event as the browser allows:
+
+- **Onset** is stamped inside the `requestAnimationFrame` callback of the frame that presents the target, so the interval excludes React's commit work and the browser's paint.
+- **Response** uses the keyboard event's own `event.timeStamp` — the moment the event was generated, on the same clock as `performance.now()` — instead of a clock read taken after handler work.
+
+The rounded response time is submitted in milliseconds:
 
 ```json
 {
@@ -104,7 +111,27 @@ Timing begins when the target appears and uses `performance.now()` for high-reso
 Repeated keydown events and duplicate in-flight submissions are ignored. If submission fails, retrying preserves the original answer and measured response time.
 
 > [!NOTE]
-> Backend duration values are passed directly to JavaScript timers and therefore need to be expressed in milliseconds. The current target state has no automatic timeout and waits for a valid participant response.
+> Backend duration values need to be expressed in milliseconds. Fixation and stimulus durations are scheduled against a `performance.now()` deadline evaluated inside `requestAnimationFrame`, so every duration ends on a frame that was actually presented instead of whenever a `setTimeout` happens to fire. Durations are therefore quantised to the display's refresh interval. The target state has no automatic timeout and waits for a valid participant response.
+
+## Stimulus presentation pipeline
+
+Reaction time is the primary measure, so the presentation path is built to remove avoidable delay and jitter between a phase change and the pixels reaching the participant.
+
+### Preloaded and pre-decoded images
+
+Before the first fixation cross, every image of the session is downloaded **and decoded** through `HTMLImageElement.decode()`. Presenting a stimulus later is then a paint of an already-decoded bitmap rather than a network request plus a decode on the critical frame. The decoded elements are retained for the whole session so the browser cannot evict the bitmaps between trials.
+
+- A dedicated `PREPARING` state holds the first trial back until the warm-up finishes, with a Persian progress message.
+- In mood phases the warm-up runs while the participant reads the text and watches the video, so it adds no waiting time.
+- A per-image timeout stops one stalled asset from blocking the session; a failed asset never leaves the flow stuck.
+
+### Compositor-only phase changes
+
+The stage keeps every layer mounted — both stimulus images, both targets, and the fixation cross — for the whole trial and across the answer round trip. A phase change only flips `opacity` on layers that are already laid out and rasterised, so the presenting frame performs no element creation, no layout, and no image decode. The next trial's sources swap in during the fixation cross, never on a critical frame.
+
+### No alternative text on stimuli
+
+Stimulus images render with an empty `alt` and are hidden from assistive technology. Visible alt text would otherwise appear for a moment exactly where the participant is instructed to look and compete with the stimulus for attention.
 
 ## Four-phase participant flow
 
@@ -158,6 +185,7 @@ The active phase UUID, Persian name, `has_video`, and `video_seen` values come d
 - Phase 1 uses its own text and `first_ins.mp3`.
 - Phases 3 and 4 share the same instruction text and `second_ins.mp3`.
 - Phase 2 redirects directly to the trial and never displays instructions.
+- Narration starts automatically. Reaching this screen always involves a click, which normally satisfies the browser's autoplay policy; when playback is still blocked, a persistent Persian prompt asks the participant to start it manually.
 - Text reveal is calculated from audio `currentTime / duration` and weighted by line length.
 - Pausing narration pauses both text progression and the active reveal animation.
 - Resuming narration continues them from the same point.
@@ -172,6 +200,25 @@ Mood phases present API-selected reading content followed by a server-provided v
 
 If `video_seen` is already true, a resumed session skips the completed reading/video sequence and returns to the task.
 
+## Fullscreen presentation mode
+
+Fullscreen is available across the whole application to remove browser chrome and desktop distractions during data collection.
+
+| Screen | Control |
+|---|---|
+| Signup | Header toggle — enables fullscreen before the session starts |
+| Results dashboard | Same header toggle for researcher use |
+| Final screen | Explicit exit control, rendered only while fullscreen is active |
+| Instructions, trial, report, 404 | Inherit the active fullscreen state; no separate control |
+
+- `document.documentElement` is the fullscreen target, so portalled UI — Ant Design popups and toast containers — keeps rendering inside the fullscreen viewport.
+- Vendor-prefixed request, exit, element, and change APIs are wrapped in `src/utils/fullscreen.js`. Browsers without support hide the controls instead of offering a button that cannot work.
+- One provider (`src/context/FullscreenProvider.jsx`) owns the state and stores the participant's fullscreen intent in local storage, so a refresh mid-session does not lose it.
+- Fullscreen can only be entered from a user gesture. If the participant leaves it with `Esc` or `F11`, a compact Persian chip offers a one-click return.
+- That chip is suppressed while stimuli are on screen, and on screens that already own a fullscreen control, so it can never appear during a timed trial.
+- Layouts use `dvh` units plus `html:fullscreen` styling, so entering or leaving fullscreen does not change how narration, instruction text, or stimuli are laid out.
+- The final screen clears the stored fullscreen intent when the session ends, so the chip does not follow the next participant to the registration page.
+
 ## Core features
 
 ### Participant experience
@@ -182,6 +229,9 @@ If `video_seen` is already true, a resumed session skips the completed reading/v
 - Double-submit protection during registration and session preparation.
 - Session-creation retry without registering the same participant again in the mounted form.
 - Compact, single-viewport signup design for normal screen sizes.
+- Fullscreen exam mode, enabled from the signup header and exited from the final screen.
+- Scroll-free single-viewport layouts for the practice report, final screen, and 404 page: they scale with viewport height instead of pushing content below the fold.
+- Persian numerals for every displayed score, threshold, and percentage.
 - Dark glassmorphism UI, gradients, icons, responsive layouts, and motion effects.
 - Global Persian toasts that can survive route navigation.
 
@@ -189,9 +239,12 @@ If `video_seen` is already true, a resumed session skips the completed reading/v
 
 - Backend-controlled cluster count, timing, image placement, and target placement.
 - Practice, baseline, filler, and mood-phase support.
-- High-resolution reaction-time measurement.
+- Session-wide image preloading and decoding before the first trial, so no trial waits on the network.
+- Frame-locked fixation and stimulus durations, with stimulus onset stamped on the presenting frame.
+- Reaction time measured from the keyboard event's own timestamp.
+- Stimulus layers that stay mounted for the whole trial, making each phase change a compositor-only change.
 - Route guards for phases that require instructions.
-- Custom audio and video play/pause controls.
+- Custom audio and video play/pause controls, with automatic narration start and a manual fallback.
 - Duplicate-load, duplicate-response, duplicate-completion, and stale-request safeguards.
 - Recoverable error states for loading, answer submission, video loading, video completion, and phase transitions.
 
@@ -204,6 +257,7 @@ If `video_seen` is already true, a resumed session skips the completed reading/v
 - UTF-8 CSV export with Persian headers and spreadsheet-formula protection.
 - Concurrent download of backend-generated Excel reports for every phase.
 - Honest download states: complete, partial, failed, and no reports available.
+- Fullscreen toggle in the dashboard header for reviewing wide tables.
 - Direct navigation back to participant registration.
 
 ## Implementation methods
@@ -226,7 +280,19 @@ The final screen removes only experiment-related storage keys and resets Redux a
 
 ### Event-driven experiment states
 
-The trial screen uses explicit states such as loading, reading, video, test, saving, finished, and recoverable error states. Inside the test, `INITIAL`, `COMPARISON`, and `TARGET` represent trial substates—not experiment phases.
+The trial screen uses explicit states such as loading, preparing, reading, video, test, saving, finished, and recoverable error states. `PREPARING` covers the stimulus warm-up and hands over to `TEST` only once every image is decoded. Inside the test, `INITIAL`, `COMPARISON`, and `TARGET` represent trial substates—not experiment phases.
+
+### Fullscreen as shared application state
+
+Fullscreen is not per-screen behavior. A provider wrapping the router owns the real fullscreen state, the participant's stored intent, browser support detection, and a reference-counted suppression mechanism that screens use to silence the restore prompt while it would be inappropriate. Screens consume it through `useFullscreen()` and `useFullscreenPromptPause()`, and share one `FullscreenButton` component instead of re-implementing controls.
+
+### Single-viewport screens
+
+Screens that must never scroll declare it explicitly through the `useLockedViewport()` hook, which reference-counts a class on the document element so overlapping screens — or a React StrictMode double mount — cannot leave the document permanently locked. Their layouts combine `dvh` heights with viewport-height `clamp()` scaling, and progressively drop optional decoration on short windows, so the content fits instead of overflowing.
+
+### Persian numeral formatting
+
+Numeric output goes through `src/utils/persianNumbers.js`, which maps digits directly and uses `٫` as the decimal separator. `Number.toLocaleString('fa-IR')` was replaced because it silently falls back to Latin digits on runtimes shipped with trimmed ICU data. Whole percentages render without a trailing zero (`۸۸٪`, not `۸۸٫۰٪`), and Persian digits are set with Vazirmatn's `ss01`–`ss03` stylistic sets rather than Latin tabular figures.
 
 ### Resilient asynchronous behavior
 
@@ -247,6 +313,7 @@ The implementation includes:
 - Decorative icons hidden from assistive technologies.
 - Keyboard-focus styling and live download status announcements.
 - Reduced-motion handling on key animated screens.
+- Fullscreen controls carry Persian labels and pressed state; stimulus images are hidden from assistive technology instead of exposing meaningless alt text.
 
 These are accessibility considerations, not a claim of full WCAG conformance.
 
@@ -264,7 +331,9 @@ These are accessibility considerations, not a claim of full WCAG conformance.
 | **Framer Motion** | Page entrances and interface animations |
 | **Axios** | Registration, phase, session, response, video, and report requests |
 | **React Toastify** | Persistent Persian loading, success, and error notifications |
-| **Vazirmatn** | Persian interface typography |
+| **Vazirmatn** | Persian interface typography, including Persian numeral stylistic sets |
+| **Fullscreen API** | Distraction-free presentation mode across every screen |
+| **`requestAnimationFrame` + `Image.decode()`** | Frame-locked stimulus durations and pre-decoded stimulus bitmaps |
 | **ESLint** | Static code-quality checks |
 
 ## Application routes
@@ -370,11 +439,19 @@ src/
 │   ├── sounds/                # Narrated instruction audio
 │   └── ...                    # Logos and visual assets
 ├── components/
-│   └── ProgressiveForm.jsx    # Participant registration form
+│   ├── ProgressiveForm.jsx    # Participant registration form
+│   ├── FullscreenButton.jsx   # Shared enter/exit/toggle fullscreen control
+│   └── FullscreenRestorePrompt.jsx # One-click return after leaving fullscreen
+├── context/
+│   ├── FullscreenProvider.jsx # Fullscreen state, stored intent, prompt suppression
+│   └── fullscreenContext.js   # Context object and consumer hooks
+├── hooks/
+│   └── useLockedViewport.js   # Reference-counted no-scroll screens
 ├── pages/
 │   ├── SignUp.jsx             # Registration landing page
 │   ├── InstructionsScreen.jsx # Synchronized narrated instructions
 │   ├── Trial.jsx              # Reading, video, stimuli, timing, and answers
+│   ├── Trial.css              # Stimulus stage layers and presentation styling
 │   ├── Report.jsx             # Practice result and retry/pass decision
 │   ├── FinalScreen.jsx        # Completion and experiment-state cleanup
 │   ├── TableResults.jsx       # Researcher dashboard and exports
@@ -384,11 +461,15 @@ src/
 │   └── store.js               # Redux store
 ├── utils/
 │   ├── API_SERVER.js          # API base URL
+│   ├── fullscreen.js          # Cross-browser Fullscreen API wrappers
+│   ├── persianNumbers.js      # Deterministic Persian digit formatting
 │   └── phaseFlow.js           # Routes, phase rules, and transitions
-├── App.jsx                    # Global Persian toast host
+├── App.jsx                    # Toast host, fullscreen provider, and restore prompt
 ├── main.jsx                   # React, Router, and Redux providers
 └── routes.jsx                 # Route declarations
 ```
+
+Each page keeps its own stylesheet next to it (`SignUp.css`, `Report.css`, `FinalScreen.css`, `NotFound.css`, `TableResults.css`), and shared components do the same.
 
 ## Quality checks
 
@@ -412,7 +493,10 @@ The repository currently has no automated unit, integration, or end-to-end test 
 - Do not infer backend encryption or access-control guarantees from this frontend repository.
 - Use environment-based API configuration for staging and production deployments.
 - Configure the web server for SPA history fallback.
-- Validate timing behavior on the exact browsers and hardware used during data collection.
+- Validate timing behavior on the exact browsers and hardware used during data collection. Stimulus durations are quantised to the display's refresh interval, so refresh rate is part of the measurement setup.
+- Fullscreen requires a user gesture and cannot be entered programmatically. iOS Safari does not support fullscreen for arbitrary elements; there the controls hide themselves and the session continues in a normal window.
+- Instruct data collectors to enable fullscreen at signup and to use the on-screen chip if a participant leaves it mid-session.
+- The stimulus warm-up downloads every image of a session up front. Verify bandwidth and backend response times for the largest cluster set before a collection run.
 
 ---
 

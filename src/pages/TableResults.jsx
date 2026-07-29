@@ -41,6 +41,7 @@ import { useNavigate } from 'react-router-dom';
 import mainlogo from '../assets/mainlogo.png';
 import infs from '../assets/infs.png';
 import FullscreenButton from '../components/FullscreenButton.jsx';
+import { useFullscreenPromptPause } from '../context/fullscreenContext.js';
 import { API_SERVER } from '../utils/API_SERVER.js';
 import { APP_ROUTE } from '../utils/phaseFlow.js';
 import './TableResults.css';
@@ -417,6 +418,9 @@ const MobileLoadingCards = () => (
 export default function ParticipantsTable() {
   const navigate = useNavigate();
   const reduceMotion = useReducedMotion();
+
+  // The header already exposes a fullscreen toggle here.
+  useFullscreenPromptPause();
   const [participants, setParticipants] = useState([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
