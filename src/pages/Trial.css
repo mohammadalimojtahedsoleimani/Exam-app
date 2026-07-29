@@ -1,0 +1,91 @@
+/* Stimulus stage
+   Every layer stays mounted for the whole trial and is promoted to its own
+   compositor layer, so a phase change is a pure opacity flip: no element
+   creation, no layout pass and no image decode on the presentation frame. */
+
+.trial-stage {
+    position: relative;
+    display: flex;
+    width: 100%;
+    height: 100dvh;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+.trial-stage__slots {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: clamp(3rem, 16vw, 12rem);
+}
+
+.trial-slot {
+    position: relative;
+    display: grid;
+    width: clamp(9rem, min(26vw, 42vh), 24rem);
+    aspect-ratio: 1;
+    flex: 0 0 auto;
+    place-items: center;
+}
+
+.trial-layer {
+    opacity: 0;
+    /* Rasterise up front so becoming visible costs nothing but a composite. */
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    will-change: opacity;
+    transition: none !important;
+    animation: none !important;
+}
+
+.trial-layer.is-visible {
+    opacity: 1;
+}
+
+.trial-image {
+    width: 100%;
+    height: 100%;
+    border: 4px solid #334155;
+    border-radius: 0.75rem;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6);
+    object-fit: cover;
+    -webkit-user-drag: none;
+    pointer-events: none;
+}
+
+.trial-target {
+    position: absolute;
+    width: clamp(3rem, min(6vw, 10vh), 6rem);
+    aspect-ratio: 1;
+    border-radius: 50%;
+    background: radial-gradient(circle at 30% 30%, #fffbeb, #fbbf24, #d97706);
+    box-shadow: 0 0 40px rgba(251, 191, 36, 0.8);
+}
+
+.trial-fixation {
+    position: absolute;
+    display: grid;
+    width: clamp(4rem, min(8vw, 14vh), 8rem);
+    aspect-ratio: 1;
+    place-items: center;
+}
+
+.trial-fixation__bar {
+    position: absolute;
+    border-radius: 999px;
+    background: #fff;
+    box-shadow: 0 0 25px rgba(255, 255, 255, 0.9);
+}
+
+.trial-fixation__bar--horizontal {
+    width: 100%;
+    height: clamp(0.5rem, 1vw, 1rem);
+}
+
+.trial-fixation__bar--vertical {
+    width: clamp(0.5rem, 1vw, 1rem);
+    height: 100%;
+}

@@ -1,4 +1,4 @@
-import React, {useState, useEffect, useCallback, useRef} from 'react';
+import React, {useState, useEffect, useCallback, useMemo, useRef} from 'react';
 import axios from 'axios';
 import {useLocation, useNavigate} from 'react-router-dom';
 import {Button, ConfigProvider, theme, Typography} from 'antd';
@@ -8,8 +8,10 @@ import {
     setVideoSeen,
     findValidSession
 } from "../api/probes.js";
-import {PlayCircleOutlined, FileTextOutlined} from '@ant-design/icons';
+import {PlayCircleOutlined, FileTextOutlined, LoadingOutlined} from '@ant-design/icons';
 import {API_SERVER} from "../utils/API_SERVER.js";
+import {useFullscreenPromptPause} from "../context/fullscreenContext.js";
+import {useLockedViewport} from "../hooks/useLockedViewport.js";
 import {
     APP_ROUTE,
     getTrialCompletionTransition,
@@ -17,6 +19,7 @@ import {
     phaseHasInstructions,
     phaseUsesMoodInstructions,
 } from "../utils/phaseFlow.js";
+import './Trial.css';
 
 const {Title, Paragraph} = Typography;
 
@@ -49,33 +52,131 @@ const getMoodTypeFromApi = (phaseName, instructionName) => {
 };
 
 
-const ComparisonImageContainer = ({src}) => (
-    <div className="w-96 h-96 flex-shrink-0 flex justify-center items-center">
-        {src && <img src={src} alt="stimulus"
-                     className="w-full h-full object-cover rounded-xl shadow-2xl border-4 border-slate-700"/>}
-    </div>
-);
+const IMAGE_PRELOAD_TIMEOUT = 15000;
 
+const collectClusterImageSources = (clusters = []) => {
+    const sources = new Set();
 
-const TargetBall = () => (
-    <div
-        className="w-24 h-24 rounded-full shadow-[0_0_40px_rgba(251,191,36,0.8)]"
-        style={{
+    clusters.forEach((cluster) => {
+        (cluster?.images ?? []).forEach((image) => {
+            if (image?.file) sources.add(image.file);
+        });
+    });
 
-            background: 'radial-gradient(circle at 30% 30%, #fffbeb, #fbbf24, #d97706)'
-        }}
-    ></div>
-);
+    return [...sources];
+};
 
+/**
+ * Downloads *and decodes* one stimulus before the trial starts, so presenting it
+ * later is a paint of an already-decoded bitmap instead of a network + decode
+ * round trip. Resolves (never rejects) so a single broken asset cannot stall the
+ * whole session.
+ */
+const preloadStimulusImage = (src) => new Promise((resolve) => {
+    const image = new Image();
+    let isSettled = false;
 
-const FixationCross = () => (
-    <div className="relative w-32 h-32 flex justify-center items-center">
+    const settle = () => {
+        if (isSettled) return;
+        isSettled = true;
+        clearTimeout(timer);
+        resolve(image);
+    };
 
-        <div className="absolute w-full h-4 bg-white rounded-full shadow-[0_0_25px_rgba(255,255,255,0.9)]"></div>
+    const timer = setTimeout(settle, IMAGE_PRELOAD_TIMEOUT);
 
-        <div className="absolute h-full w-4 bg-white rounded-full shadow-[0_0_25px_rgba(255,255,255,0.9)]"></div>
-    </div>
-);
+    image.decoding = 'sync';
+    if ('fetchPriority' in image) image.fetchPriority = 'high';
+
+    image.onload = () => {
+        if (typeof image.decode === 'function') {
+            image.decode().then(settle, settle);
+            return;
+        }
+        settle();
+    };
+    image.onerror = settle;
+    image.src = src;
+});
+
+/**
+ * Frame-locked timer. A bare `setTimeout` can fire between two frames — or late
+ * when the tab is throttled — which stretches a stimulus by at least one frame.
+ * Firing from `requestAnimationFrame` keeps every duration aligned to real
+ * presented frames.
+ */
+const scheduleAtFrame = (delay, callback) => {
+    const deadline = performance.now() + Math.max(0, Number(delay) || 0);
+    let frame = requestAnimationFrame(function tick(timestamp) {
+        if (timestamp >= deadline) {
+            callback();
+            return;
+        }
+
+        frame = requestAnimationFrame(tick);
+    });
+
+    return () => cancelAnimationFrame(frame);
+};
+
+/**
+ * The stimulus stage keeps every layer mounted for the whole trial and only flips
+ * `opacity`, so switching phases is a compositor-only change: no element
+ * creation, no layout, no image decode on the critical frame.
+ * Images carry no `alt` text on purpose — a visible alt string would flash as a
+ * competing visual cue right where the participant is asked to look.
+ */
+const StimulusImage = ({src, isVisible}) => {
+    if (!src) return null;
+
+    return (
+        <img
+            className={`trial-layer trial-image${isVisible ? ' is-visible' : ''}`}
+            src={src}
+            alt=""
+            aria-hidden="true"
+            draggable={false}
+            decoding="sync"
+            fetchPriority="high"
+            onContextMenu={(event) => event.preventDefault()}
+        />
+    );
+};
+
+const TrialStage = ({leftImage, rightImage, targetPosition, phase}) => {
+    const showComparison = phase === 'COMPARISON';
+    const showTarget = phase === 'TARGET';
+
+    return (
+        <div className="trial-stage">
+            <div className="trial-stage__slots">
+                <div className="trial-slot">
+                    <StimulusImage src={leftImage} isVisible={showComparison}/>
+                    <span
+                        className={`trial-layer trial-target${showTarget && targetPosition === 'LEFT' ? ' is-visible' : ''}`}
+                        aria-hidden="true"
+                    />
+                </div>
+
+                <div className="trial-slot">
+                    <StimulusImage src={rightImage} isVisible={showComparison}/>
+                    <span
+                        className={`trial-layer trial-target${showTarget && targetPosition === 'RIGHT' ? ' is-visible' : ''}`}
+                        aria-hidden="true"
+                    />
+                </div>
+            </div>
+
+            <div
+                className={`trial-layer trial-fixation${phase === 'INITIAL' ? ' is-visible' : ''}`}
+                aria-hidden="true"
+            >
+                <span className="trial-fixation__bar trial-fixation__bar--horizontal"/>
+                <span className="trial-fixation__bar trial-fixation__bar--vertical"/>
+            </div>
+        </div>
+    );
+};
 
 const Trial = () => {
     const navigate = useNavigate();
@@ -87,6 +188,7 @@ const Trial = () => {
     const [pendingSubmission, setPendingSubmission] = useState(null);
     const [isVideoComplete, setIsVideoComplete] = useState(false);
     const [isSavingVideo, setIsSavingVideo] = useState(false);
+    const [areStimuliReady, setAreStimuliReady] = useState(false);
 
     const [currentTrialIndex, setCurrentTrialIndex] = useState(0);
     const [trialPhase, setTrialPhase] = useState('INITIAL'); // INITIAL, COMPARISON, TARGET
@@ -104,10 +206,37 @@ const Trial = () => {
     const phaseCompletionSavedRef = useRef(false);
     const videoSeenInFlightRef = useRef(false);
     const videoRef = useRef(null);
+    // Holds every decoded stimulus for the whole session so the browser cannot
+    // evict a bitmap between trials.
+    const decodedStimuliRef = useRef([]);
 
-  
+    const isStimulusScreen = globalStatus === 'TEST' || globalStatus === 'PREPARING';
+
+    // No document scrolling and no fullscreen nudges while stimuli are on screen.
+    useLockedViewport(isStimulusScreen);
+    useFullscreenPromptPause(isStimulusScreen);
 
     useEffect(() => {
+        // Every stimulus of the session is fetched and decoded before the first
+        // fixation cross, so no trial can ever wait on the network. For mood
+        // phases this runs while the participant reads the text and watches the
+        // video, so it costs no extra waiting time.
+        const warmUpStimuli = async (clusters, requestId) => {
+            const sources = collectClusterImageSources(clusters);
+
+            if (!sources.length) {
+                if (requestId === loadRequestIdRef.current) setAreStimuliReady(true);
+                return;
+            }
+
+            const decoded = await Promise.all(sources.map(preloadStimulusImage));
+
+            if (requestId !== loadRequestIdRef.current) return;
+
+            decodedStimuliRef.current = decoded;
+            setAreStimuliReady(true);
+        };
+
         const fetchData = async () => {
             let requestId = null;
 
@@ -141,6 +270,8 @@ const Trial = () => {
                 setCurrentTrialIndex(0);
                 setTrialPhase('INITIAL');
                 setIsVideoComplete(false);
+                setAreStimuliReady(false);
+                decodedStimuliRef.current = [];
 
                 const data = await getSessionClusters(token, sessionID);
 
@@ -151,6 +282,7 @@ const Trial = () => {
                 }
 
                 setExams(data);
+                warmUpStimuli(data.data.clusters, requestId);
 
                 const apiExpectsVideo = localStorage.getItem('currentPhaseHasVideo') === 'true';
                 const hasSessionVideo = Boolean(data.data?.video?.file);
@@ -169,9 +301,9 @@ const Trial = () => {
                         throw new Error('The API returned unsupported or contradictory mood phase metadata.');
                     }
 
-                    setGlobalStatus(videoWasAlreadySeen ? 'TEST' : 'READING_TEXT');
+                    setGlobalStatus(videoWasAlreadySeen ? 'PREPARING' : 'READING_TEXT');
                 } else {
-                    setGlobalStatus('TEST');
+                    setGlobalStatus('PREPARING');
                 }
 
             } catch (error) {
@@ -187,26 +319,38 @@ const Trial = () => {
         fetchData();
     }, [currentPhase, location.key, navigate]);
 
+    // --- Logic: Start the trials once every stimulus is decoded ---
+    useEffect(() => {
+        if (globalStatus !== 'PREPARING' || !areStimuliReady) return;
+
+        setGlobalStatus('TEST');
+    }, [globalStatus, areStimuliReady]);
+
     // --- Logic: Trial Phase Transitions ---
     useEffect(() => {
-        if (globalStatus !== 'TEST' || !currentTrial) return;
+        if (globalStatus !== 'TEST' || !currentTrial) return undefined;
 
-        let timer;
+        if (trialPhase === 'TARGET') {
+            // Stamp the onset on the frame that actually presents the target, so
+            // the reaction time excludes React's commit and the browser's paint.
+            const frame = requestAnimationFrame((timestamp) => {
+                targetStartTimeRef.current = timestamp;
+            });
 
-        if (trialPhase === 'INITIAL') {
-  
-            timer = setTimeout(() => {
-                setTrialPhase('COMPARISON');
-            }, currentTrial.initial_duration);
-        } else if (trialPhase === 'COMPARISON') {
-            timer = setTimeout(() => {
-                setTrialPhase('TARGET');
-            }, currentTrial.comparison_duration);
-        } else if (trialPhase === 'TARGET') {
-            targetStartTimeRef.current = performance.now();
+            return () => cancelAnimationFrame(frame);
         }
 
-        return () => clearTimeout(timer);
+        if (trialPhase === 'INITIAL') {
+            return scheduleAtFrame(
+                currentTrial.initial_duration,
+                () => setTrialPhase('COMPARISON'),
+            );
+        }
+
+        return scheduleAtFrame(
+            currentTrial.comparison_duration,
+            () => setTrialPhase('TARGET'),
+        );
     }, [globalStatus, currentTrial, trialPhase]);
 
     const finishCurrentPhase = useCallback(async () => {
@@ -262,13 +406,24 @@ const Trial = () => {
     }, [currentTrialIndex, exams, finishCurrentPhase]);
 
     // --- Logic: Submit Answer ---
-    const handleSubmitAnswer = useCallback(async (participantAnswer, savedResponseTime = null) => {
+    const handleSubmitAnswer = useCallback(async (
+        participantAnswer,
+        savedResponseTime = null,
+        responseTimestamp = null,
+    ) => {
         if (!currentTrial || submissionInFlightRef.current) return;
 
         const targetStartTime = targetStartTimeRef.current;
         if (targetStartTime === null && savedResponseTime === null) return;
 
-        const responseTime = savedResponseTime ?? Math.round(performance.now() - targetStartTime);
+        // `event.timeStamp` is the moment the key event was generated, on the same
+        // clock as `performance.now()`; reading the clock inside the handler would
+        // instead include everything JS did before this line.
+        const responseAt = Number.isFinite(responseTimestamp) && responseTimestamp > 0
+            ? responseTimestamp
+            : performance.now();
+        const responseTime = savedResponseTime
+            ?? Math.max(0, Math.round(responseAt - targetStartTime));
 
         const submissionData = {
             cluster_id: currentTrial.id,
@@ -309,10 +464,10 @@ const Trial = () => {
             const key = event.key.toUpperCase();
             if (key === 'D' || key === 'ARROWLEFT') {
                 event.preventDefault();
-                handleSubmitAnswer('LEFT');
+                handleSubmitAnswer('LEFT', null, event.timeStamp);
             } else if (key === 'K' || key === 'ARROWRIGHT') {
                 event.preventDefault();
-                handleSubmitAnswer('RIGHT');
+                handleSubmitAnswer('RIGHT', null, event.timeStamp);
             }
         };
 
@@ -396,11 +551,40 @@ const Trial = () => {
     };
 
 
+    // Resolved once per trial — during the fixation cross — so the comparison
+    // frame has nothing left to compute.
+    const stimulus = useMemo(() => {
+        if (!currentTrial) {
+            return {leftImage: null, rightImage: null, targetPosition: null};
+        }
+
+        const comparisonImages = (currentTrial.images || []).filter(img => img.type === 'COMPARISON');
+        let specialImg = null;
+        let normalImg = null;
+
+        if (currentTrial.type === 'FILLER') {
+            if (comparisonImages.length >= 2) {
+                [specialImg, normalImg] = comparisonImages;
+            }
+        } else {
+            specialImg = comparisonImages.find(img => img.is_special);
+            normalImg = comparisonImages.find(img => !img.is_special);
+        }
+
+        const isSpecialOnLeft = currentTrial.special_position === 'LEFT';
+
+        return {
+            leftImage: (isSpecialOnLeft ? specialImg : normalImg)?.file ?? null,
+            rightImage: (isSpecialOnLeft ? normalImg : specialImg)?.file ?? null,
+            targetPosition: currentTrial.target_position ?? null,
+        };
+    }, [currentTrial]);
+
     // --- Styles ---
     const styles = {
         backgroundWrapper: {
-            minHeight: '100vh',
-            width: '100vw',
+            minHeight: '100dvh',
+            width: '100%',
             background: 'radial-gradient(circle at 50% 10%, #134e4a 0%, #0f172a 60%, #020617 100%)',
             display: 'flex',
             flexDirection: 'column',
@@ -434,60 +618,6 @@ const Trial = () => {
     };
 
 
-    const renderComparisonPhase = () => {
-        const images = currentTrial?.images || [];
-        const type = currentTrial?.type;
-        let specialImg = null;
-        let normalImg = null;
-        const comparisionImage = images.filter(img => img.type === 'COMPARISON');
-
-        if (type === 'FILLER') {
-            if (comparisionImage.length >= 2) {
-                [specialImg, normalImg] = comparisionImage;
-            }
-        } else {
-            specialImg = comparisionImage.find(img => img.is_special);
-            normalImg = comparisionImage.find(img => !img.is_special);
-        }
-
-
-        let leftImageSrc = null;
-        let rightImageSrc = null;
-
-        if (currentTrial.special_position === 'LEFT') {
-            leftImageSrc = specialImg?.file;
-            rightImageSrc = normalImg?.file;
-        } else {
-            leftImageSrc = normalImg?.file;
-            rightImageSrc = specialImg?.file;
-        }
-
-        return (
-            <div className="w-full h-full flex justify-center items-center gap-48">
-                <ComparisonImageContainer src={leftImageSrc}/>
-                <ComparisonImageContainer src={rightImageSrc}/>
-            </div>
-        );
-    };
-
-    const renderTargetPhase = () => {
-        const position = currentTrial.target_position;
-
-        return (
-            <div className="w-full h-full flex justify-center items-center gap-48">
-                {/* Left Slot */}
-                <div className="w-96 h-96 flex justify-center items-center">
-                    {position === 'LEFT' && <TargetBall/>}
-                </div>
-
-                {/* Right Slot */}
-                <div className="w-96 h-96 flex justify-center items-center">
-                    {position === 'RIGHT' && <TargetBall/>}
-                </div>
-            </div>
-        );
-    };
-
     // --- Main Render ---
 
     return (
@@ -502,6 +632,18 @@ const Trial = () => {
                 {globalStatus === 'LOADING' && (
                     <div className="text-[#2dd4bf] text-2xl font-bold animate-pulse">
                         در حال بارگذاری...
+                    </div>
+                )}
+
+                {globalStatus === 'PREPARING' && (
+                    <div className="flex flex-col items-center gap-4 text-center" dir="rtl">
+                        <LoadingOutlined style={{fontSize: '34px', color: '#2dd4bf'}} spin/>
+                        <span className="text-[#2dd4bf] text-xl font-bold">
+                            در حال آماده‌سازی تصاویر آزمون...
+                        </span>
+                        <span className="text-slate-400 text-sm max-w-md">
+                            تصاویر پیش از شروع کامل بارگذاری می‌شوند تا در طول آزمون هیچ تأخیری رخ ندهد.
+                        </span>
                     </div>
                 )}
 
@@ -616,7 +758,7 @@ const Trial = () => {
                                 size="large"
                                 onClick={() => {
                                     setFlowError('');
-                                    setGlobalStatus('TEST');
+                                    setGlobalStatus('PREPARING');
                                 }}
                                 style={{...styles.primaryButton, minWidth: '180px'}}
                             >
@@ -637,15 +779,16 @@ const Trial = () => {
                 )}
 
 
-                {globalStatus === 'TEST' && (
-                    <div className="w-full h-screen flex justify-center items-center">
-
-                        {trialPhase === 'INITIAL' && <FixationCross/>}
-
-                        {trialPhase === 'COMPARISON' && renderComparisonPhase()}
-
-                        {trialPhase === 'TARGET' && renderTargetPhase()}
-                    </div>
+                {globalStatus === 'TEST' && currentTrial && (
+                    /* Deliberately not keyed per trial: reusing the same elements
+                       lets the next pair of sources swap in during the fixation
+                       cross instead of on the presentation frame. */
+                    <TrialStage
+                        leftImage={stimulus.leftImage}
+                        rightImage={stimulus.rightImage}
+                        targetPosition={stimulus.targetPosition}
+                        phase={trialPhase}
+                    />
                 )}
 
             </div>
