@@ -238,11 +238,9 @@ const Report = () => {
         ? { duration: 0 }
         : { duration: 0.42, ease: [0.22, 1, 0.36, 1] };
     const isBusy = loading || isTransitioning;
-    const scoreLabel = loading
-        ? '—'
-        : hasError
-            ? '—'
-            : `${formatPercent(safeRecord)}٪`;
+    const hasScore = !loading && !hasError;
+    const scoreNumber = hasScore ? formatPercent(safeRecord) : EM_DASH;
+    const scoreLabel = hasScore ? `${scoreNumber}${PERSIAN_PERCENT_SIGN}` : EM_DASH;
 
     return (
         <ConfigProvider
@@ -330,7 +328,7 @@ const Report = () => {
                                 role="img"
                                 aria-label={loading
                                     ? 'در حال دریافت نتیجه آزمون'
-                                    : `دقت پاسخ ${scoreLabel} از حد نصاب ${PASS_THRESHOLD.toLocaleString('fa-IR')} درصد`}
+                                    : `دقت پاسخ ${scoreLabel} از حد نصاب ${PASS_THRESHOLD_LABEL} درصد`}
                             >
                                 {/* Rotated so the ring starts at 12 o'clock and runs clockwise. */}
                                 <g transform="rotate(-90 100 100)">
@@ -391,8 +389,14 @@ const Report = () => {
                                         animate={{ opacity: 1 }}
                                         transition={{ delay: reduceMotion ? 0 : 0.85 }}
                                         aria-live="polite"
+                                        aria-label={`دقت پاسخ ${scoreLabel}`}
                                     >
-                                        {scoreLabel}
+                                        <span className="report-gauge__number">{scoreNumber}</span>
+                                        {hasScore && (
+                                            <span className="report-gauge__unit" aria-hidden="true">
+                                                {PERSIAN_PERCENT_SIGN}
+                                            </span>
+                                        )}
                                     </Motion.strong>
                                 )}
                                 <span className="report-gauge__caption">دقت پاسخ</span>
@@ -405,14 +409,16 @@ const Report = () => {
                                     <RiseOutlined aria-hidden="true" />
                                     امتیاز شما
                                 </dt>
-                                <dd>{scoreLabel}</dd>
+                                <dd className="report-metric__number">{scoreLabel}</dd>
                             </div>
                             <div className="report-metric">
                                 <dt>
                                     <FlagFilled aria-hidden="true" />
                                     حد نصاب
                                 </dt>
-                                <dd>{PASS_THRESHOLD.toLocaleString('fa-IR')}٪</dd>
+                                <dd className="report-metric__number">
+                                    {PASS_THRESHOLD_LABEL}{PERSIAN_PERCENT_SIGN}
+                                </dd>
                             </div>
                             <div className="report-metric report-metric--status">
                                 <dt>
