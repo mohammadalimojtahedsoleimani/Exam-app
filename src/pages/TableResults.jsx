@@ -1,4 +1,11 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, {
+  useCallback,
+  useDeferredValue,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import axios from 'axios';
 import {
   Alert,
@@ -35,13 +42,13 @@ import {
   WarningFilled,
   WomanOutlined,
 } from '@ant-design/icons';
-import { motion as Motion, useReducedMotion } from 'framer-motion';
 import { cssTransition, Slide, toast } from 'react-toastify';
 import { useNavigate } from 'react-router-dom';
 import mainlogo from '../assets/mainlogo.png';
 import infs from '../assets/infs.png';
 import FullscreenButton from '../components/FullscreenButton.jsx';
 import { useFullscreenPromptPause } from '../context/fullscreenContext.js';
+import { usePrefersReducedMotion } from '../hooks/usePrefersReducedMotion.js';
 import { API_SERVER } from '../utils/API_SERVER.js';
 import { APP_ROUTE } from '../utils/phaseFlow.js';
 import './TableResults.css';
@@ -103,6 +110,60 @@ const DOWNLOAD_BUTTON_CONFIG = {
   },
 };
 
+// Built once per motion preference: a fresh theme object on every render makes
+// antd recompute and re-hash its entire design-token set.
+const buildTheme = (reduceMotion) => ({
+  algorithm: theme.darkAlgorithm,
+  token: {
+    colorPrimary: '#2dd4bf',
+    colorInfo: '#38bdf8',
+    colorSuccess: '#2dd4bf',
+    colorWarning: '#fbbf24',
+    colorError: '#fb7185',
+    colorBgBase: '#020617',
+    colorBgContainer: '#0b1324',
+    colorBgElevated: '#0f1c2e',
+    colorBorder: '#475569',
+    colorText: '#e8eef7',
+    colorTextSecondary: '#a8b5c8',
+    borderRadius: 14,
+    controlHeightLG: 48,
+    fontFamily: "'Vazirmatn', Tahoma, sans-serif",
+    motion: !reduceMotion,
+  },
+  components: {
+    Table: {
+      headerBg: 'rgba(45, 212, 191, 0.07)',
+      headerColor: '#cbd5e1',
+      rowHoverBg: 'rgba(45, 212, 191, 0.055)',
+      borderColor: 'rgba(148, 163, 184, 0.13)',
+      colorBgContainer: 'transparent',
+      headerSplitColor: 'rgba(148, 163, 184, 0.13)',
+    },
+    Input: {
+      colorBgContainer: 'rgba(2, 6, 23, 0.52)',
+      colorBorder: '#64748b',
+      colorText: '#f8fafc',
+      colorTextPlaceholder: '#7f8da3',
+      hoverBorderColor: '#5eead4',
+      activeBorderColor: '#2dd4bf',
+      activeShadow: '0 0 0 3px rgba(45, 212, 191, 0.13)',
+    },
+    Pagination: {
+      colorPrimary: '#2dd4bf',
+      colorBgContainer: 'rgba(15, 23, 42, 0.82)',
+      itemActiveBg: 'rgba(13, 148, 136, 0.14)',
+    },
+    Tooltip: {
+      colorBgSpotlight: '#122137',
+      colorTextLightSolid: '#f8fafc',
+    },
+  },
+});
+
+const RESULTS_THEME = buildTheme(false);
+const RESULTS_THEME_REDUCED = buildTheme(true);
+
 const normalizeDigits = (value) => String(value ?? '')
   .replace(/[۰-۹]/g, digit => String(digit.charCodeAt(0) - 1776))
   .replace(/[٠-٩]/g, digit => String(digit.charCodeAt(0) - 1632));
@@ -150,7 +211,6 @@ const ResultsToastContent = ({ type, title, message }) => {
   return (
     <div className={`results-toast-content results-toast-content--${type}`} dir="rtl">
       <span className="results-toast-content__icon" aria-hidden="true">
-        <span className="results-toast-content__pulse" />
         <Icon />
       </span>
       <span className="results-toast-content__copy">
@@ -254,7 +314,7 @@ const renderPaginationItem = (_, type, originalElement) => {
   );
 };
 
-const StatCard = ({ icon, label, value, tone, loading, hint, share }) => (
+const StatCard = React.memo(({ icon, label, value, tone, loading, hint, share }) => (
   <div className={`results-stat results-stat--${tone}`} role="listitem">
     <span className="results-stat__icon" aria-hidden="true">{icon}</span>
     <span className="results-stat__copy">
@@ -272,7 +332,7 @@ const StatCard = ({ icon, label, value, tone, loading, hint, share }) => (
       </span>
     )}
   </div>
-);
+));
 
 const DownloadPill = ({ phase, reduceMotion }) => {
   const color = PHASE_COLORS[phase.label] || DEFAULT_PHASE_COLOR;
@@ -299,7 +359,7 @@ const DownloadPill = ({ phase, reduceMotion }) => {
   );
 };
 
-const DownloadAction = ({ participant, state, onDownload, reduceMotion }) => {
+const DownloadAction = React.memo(({ participant, state, onDownload, reduceMotion }) => {
   const status = state?.status ?? 'idle';
   const config = DOWNLOAD_BUTTON_CONFIG[status] ?? DOWNLOAD_BUTTON_CONFIG.idle;
   const phases = Object.values(state?.phases ?? {});
@@ -336,7 +396,7 @@ const DownloadAction = ({ participant, state, onDownload, reduceMotion }) => {
       </Tooltip>
     </div>
   );
-};
+});
 
 const EmptyResults = ({ search, onClear }) => {
   const hasSearch = Boolean(search.trim());
@@ -360,7 +420,7 @@ const EmptyResults = ({ search, onClear }) => {
   );
 };
 
-const MobileParticipantCard = ({ participant, state, onDownload, reduceMotion }) => {
+const MobileParticipantCard = React.memo(({ participant, state, onDownload, reduceMotion }) => {
   const gender = getGenderMeta(participant.gender);
   const { Icon: GenderIcon } = gender;
 
@@ -401,7 +461,7 @@ const MobileParticipantCard = ({ participant, state, onDownload, reduceMotion })
       />
     </article>
   );
-};
+});
 
 const MobileLoadingCards = () => (
   <div className="results-mobile-skeletons" aria-label="در حال بارگذاری شرکت‌کنندگان">
@@ -417,7 +477,7 @@ const MobileLoadingCards = () => (
 
 export default function ParticipantsTable() {
   const navigate = useNavigate();
-  const reduceMotion = useReducedMotion();
+  const reduceMotion = usePrefersReducedMotion();
 
   // The header already exposes a fullscreen toggle here.
   useFullscreenPromptPause();
@@ -676,7 +736,13 @@ export default function ParticipantsTable() {
     resetDownloadStateLater(stateKey, finalStatus);
   }, [reduceMotion, resetDownloadStateLater]);
 
-  const normalizedSearch = useMemo(() => normalizeSearchValue(search), [search]);
+  // Typing stays responsive on large lists: the input updates immediately while
+  // the (expensive) filter + table render runs against the deferred value.
+  const deferredSearch = useDeferredValue(search);
+  const normalizedSearch = useMemo(
+    () => normalizeSearchValue(deferredSearch),
+    [deferredSearch],
+  );
   const filteredParticipants = useMemo(() => participants.filter((participant) => {
     const genderLabel = participant.gender === 'MALE'
       ? 'مرد'
@@ -764,22 +830,22 @@ export default function ParticipantsTable() {
     }
   }, [filteredParticipants, reduceMotion, scheduleCsvLoadingEnd]);
 
-  const handleSearchChange = (event) => {
+  const handleSearchChange = useCallback((event) => {
     setSearch(event.target.value);
     setMobilePage(1);
-  };
+  }, []);
 
-  const clearSearch = () => {
+  const clearSearch = useCallback(() => {
     setSearch('');
     setMobilePage(1);
-  };
+  }, []);
 
   const mobilePageCount = Math.max(1, Math.ceil(filteredParticipants.length / MOBILE_PAGE_SIZE));
   const safeMobilePage = Math.min(mobilePage, mobilePageCount);
-  const mobileParticipants = filteredParticipants.slice(
+  const mobileParticipants = useMemo(() => filteredParticipants.slice(
     (safeMobilePage - 1) * MOBILE_PAGE_SIZE,
     safeMobilePage * MOBILE_PAGE_SIZE,
-  );
+  ), [filteredParticipants, safeMobilePage]);
 
   const columns = useMemo(() => [
     {
@@ -861,9 +927,6 @@ export default function ParticipantsTable() {
     },
   ], [downloadAllPhases, downloadState, reduceMotion]);
 
-  const enterTransition = reduceMotion
-    ? { duration: 0 }
-    : { duration: 0.38, ease: [0.22, 1, 0.36, 1] };
   const exportDisabled = loading || downloadingCSV || filteredParticipants.length === 0;
   const exportTooltip = filteredParticipants.length === 0
     ? 'برای ساخت خروجی، دست‌کم یک نتیجه لازم است'
@@ -874,74 +937,14 @@ export default function ParticipantsTable() {
       direction="rtl"
       locale={faIR}
       componentSize="large"
-      theme={{
-        algorithm: theme.darkAlgorithm,
-        token: {
-          colorPrimary: '#2dd4bf',
-          colorInfo: '#38bdf8',
-          colorSuccess: '#2dd4bf',
-          colorWarning: '#fbbf24',
-          colorError: '#fb7185',
-          colorBgBase: '#020617',
-          colorBgContainer: '#0b1324',
-          colorBgElevated: '#0f1c2e',
-          colorBorder: '#475569',
-          colorText: '#e8eef7',
-          colorTextSecondary: '#a8b5c8',
-          borderRadius: 14,
-          controlHeightLG: 48,
-          fontFamily: "'Vazirmatn', Tahoma, sans-serif",
-          motion: !reduceMotion,
-        },
-        components: {
-          Table: {
-            headerBg: 'rgba(45, 212, 191, 0.07)',
-            headerColor: '#cbd5e1',
-            rowHoverBg: 'rgba(45, 212, 191, 0.055)',
-            borderColor: 'rgba(148, 163, 184, 0.13)',
-            colorBgContainer: 'transparent',
-            headerSplitColor: 'rgba(148, 163, 184, 0.13)',
-          },
-          Input: {
-            colorBgContainer: 'rgba(2, 6, 23, 0.52)',
-            colorBorder: '#64748b',
-            colorText: '#f8fafc',
-            colorTextPlaceholder: '#7f8da3',
-            hoverBorderColor: '#5eead4',
-            activeBorderColor: '#2dd4bf',
-            activeShadow: '0 0 0 3px rgba(45, 212, 191, 0.13)',
-          },
-          Pagination: {
-            colorPrimary: '#2dd4bf',
-            colorBgContainer: 'rgba(15, 23, 42, 0.82)',
-            itemActiveBg: 'rgba(13, 148, 136, 0.14)',
-          },
-          Tooltip: {
-            colorBgSpotlight: '#122137',
-            colorTextLightSolid: '#f8fafc',
-          },
-        },
-      }}
+      theme={reduceMotion ? RESULTS_THEME_REDUCED : RESULTS_THEME}
     >
       <main className="results-page" dir="rtl">
         <a className="results-skip-link" href="#results-data">پرش به فهرست نتایج</a>
 
-        <div className="results-backdrop" aria-hidden="true">
-          <span className="results-backdrop__grid" />
-          <span className="results-backdrop__aurora" />
-          <span className="results-backdrop__glow results-backdrop__glow--teal" />
-          <span className="results-backdrop__glow results-backdrop__glow--blue" />
-          <span className="results-backdrop__beam" />
-          <span className="results-backdrop__dot results-backdrop__dot--one" />
-          <span className="results-backdrop__dot results-backdrop__dot--two" />
-        </div>
-
         <div className="results-shell">
-          <Motion.header
+          <header
             className="results-topbar"
-            initial={reduceMotion ? false : { opacity: 0, y: -12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={enterTransition}
             aria-label="سربرگ سامانه نتایج"
           >
             <div className="results-brand">
@@ -983,15 +986,9 @@ export default function ParticipantsTable() {
                 <span className="results-back-button__compact">ثبت‌نام</span>
               </Button>
             </div>
-          </Motion.header>
+          </header>
 
-          <Motion.section
-            className="results-hero"
-            initial={reduceMotion ? false : { opacity: 0, y: 18 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ ...enterTransition, delay: reduceMotion ? 0 : 0.06 }}
-            aria-labelledby="results-page-title"
-          >
+          <section className="results-hero" aria-labelledby="results-page-title">
             <div className="results-hero__copy">
               <span className="results-hero__eyebrow">
                 <BarChartOutlined aria-hidden="true" />
@@ -1002,24 +999,10 @@ export default function ParticipantsTable() {
               </h1>
               <p>مرور اطلاعات ثبت‌نام، جست‌وجوی سریع و دریافت گزارش مراحل آزمون در یک نمای یکپارچه.</p>
             </div>
-            <div className="results-hero__visual" aria-hidden="true">
-              <span className="results-hero__orbit">
-                <span className="results-hero__satellite" />
-              </span>
-              <span className="results-hero__orbit results-hero__orbit--inner">
-                <span className="results-hero__satellite results-hero__satellite--blue" />
-              </span>
-              <span className="results-hero__visual-icon"><DatabaseOutlined /></span>
-              <span className="results-hero__visual-dot results-hero__visual-dot--one" />
-              <span className="results-hero__visual-dot results-hero__visual-dot--two" />
-            </div>
-          </Motion.section>
+          </section>
 
-          <Motion.div
+          <div
             className="results-stats"
-            initial={reduceMotion ? false : { opacity: 0, y: 18 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ ...enterTransition, delay: reduceMotion ? 0 : 0.1 }}
             role="list"
             aria-label="خلاصه آماری شرکت‌کنندگان"
           >
@@ -1061,7 +1044,7 @@ export default function ParticipantsTable() {
               tone="violet"
               loading={loading}
             />
-          </Motion.div>
+          </div>
 
           {error && (
             <Alert
@@ -1082,17 +1065,13 @@ export default function ParticipantsTable() {
             />
           )}
 
-          <Motion.section
+          <section
             id="results-data"
             className="results-workspace"
             tabIndex={-1}
             aria-labelledby="results-list-title"
-            initial={reduceMotion ? false : { opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ ...enterTransition, delay: reduceMotion ? 0 : 0.14 }}
           >
             <div className="results-workspace__sheen" aria-hidden="true" />
-            <div className="results-workspace__scan" aria-hidden="true" />
             <header className="results-workspace__header">
               <span className="results-workspace__title-icon" aria-hidden="true">
                 <BarChartOutlined />
@@ -1184,7 +1163,7 @@ export default function ParticipantsTable() {
                 }}
                 scroll={{ x: 1040 }}
                 locale={{
-                  emptyText: <EmptyResults search={search} onClear={clearSearch} />,
+                  emptyText: <EmptyResults search={deferredSearch} onClear={clearSearch} />,
                   filterConfirm: 'اعمال',
                   filterReset: 'پاک کردن',
                 }}
@@ -1198,7 +1177,7 @@ export default function ParticipantsTable() {
               {loading ? (
                 <MobileLoadingCards />
               ) : filteredParticipants.length === 0 ? (
-                <EmptyResults search={search} onClear={clearSearch} />
+                <EmptyResults search={deferredSearch} onClear={clearSearch} />
               ) : (
                 <div className="results-mobile-list__cards">
                   {mobileParticipants.map(participant => (
@@ -1226,7 +1205,7 @@ export default function ParticipantsTable() {
                 />
               )}
             </div>
-          </Motion.section>
+          </section>
 
           <footer className="results-footer">
             <span>پروتکل پژوهشی دانشگاه خوارزمی</span>

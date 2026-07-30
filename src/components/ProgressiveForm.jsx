@@ -2,12 +2,10 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Button, Form, Input, InputNumber, Radio } from 'antd';
 import {
     ArrowLeftOutlined,
-    BookOutlined,
     CheckCircleFilled,
     CheckOutlined,
     CloseCircleFilled,
     ExclamationCircleFilled,
-    ExperimentOutlined,
     IdcardOutlined,
     InfoCircleFilled,
     LoadingOutlined,
@@ -15,21 +13,17 @@ import {
     ManOutlined,
     NumberOutlined,
     SafetyCertificateOutlined,
-    SolutionOutlined,
     TeamOutlined,
-    ThunderboltFilled,
-    UserOutlined,
-    UserSwitchOutlined,
     WomanOutlined,
 } from '@ant-design/icons';
 import { toast, Slide, cssTransition } from 'react-toastify';
-import { useReducedMotion } from 'framer-motion';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import { setCredentials } from '../redux/authSlice';
 import { API_SERVER } from '../utils/API_SERVER.js';
 import { findValidSession } from '../api/probes.js';
+import { usePrefersReducedMotion } from '../hooks/usePrefersReducedMotion.js';
 import { APP_ROUTE, PHASE } from '../utils/phaseFlow.js';
 import './ProgressiveForm.css';
 
@@ -37,7 +31,6 @@ const GLOBAL_TOAST_CONTAINER_ID = 'app-global';
 const SIGNUP_SUBMISSION_TOAST_ID = 'signup-submission-feedback';
 const SIGNUP_VALIDATION_TOAST_ID = 'signup-validation-feedback';
 const SUCCESS_REDIRECT_DELAY = 950;
-const REQUIRED_FIELDS = ['subject_id', 'age', 'gender', 'group'];
 
 const ReducedMotionToastTransition = cssTransition({
     enter: 'signup-toast-reduced-motion-enter',
@@ -51,12 +44,6 @@ const FIELD_ERROR_MESSAGES = {
     age: 'سن واردشده معتبر نیست.',
     group: 'شماره گروه واردشده معتبر نیست.',
 };
-
-const flowSteps = [
-    { label: 'اطلاعات اولیه', icon: UserOutlined },
-    { label: 'آماده‌سازی جلسه', icon: ExperimentOutlined },
-    { label: 'راهنمای آزمون', icon: BookOutlined },
-];
 
 const toPersianDigits = (value) => Number(value).toLocaleString('fa-IR');
 
@@ -96,25 +83,6 @@ const focusFieldSafely = (form, name) => {
     }
 };
 
-const isFieldFilled = (value) => {
-    if (typeof value === 'string') return value.trim().length > 0;
-    return value !== undefined && value !== null && value !== '';
-};
-
-const FieldLabel = ({ icon, text, hint }) => {
-    const LabelIcon = icon;
-
-    return (
-        <span className="signup-label">
-            <span className="signup-label__icon" aria-hidden="true">
-                <LabelIcon />
-            </span>
-            <span className="signup-label__text">{text}</span>
-            {hint ? <span className="signup-label__hint">{hint}</span> : null}
-        </span>
-    );
-};
-
 const SignupToastContent = ({ type, title, message }) => {
     const iconByType = {
         loading: LoadingOutlined,
@@ -128,7 +96,6 @@ const SignupToastContent = ({ type, title, message }) => {
     return (
         <div className={`signup-toast-content signup-toast-content--${type}`} dir="rtl">
             <span className="signup-toast-content__icon" aria-hidden="true">
-                <span className="signup-toast-content__pulse" />
                 <Icon spin={type === 'loading'} />
             </span>
             <span className="signup-toast-content__copy">
@@ -195,25 +162,19 @@ const updateSignupToast = (toastId, type, title, message, reduceMotion) => {
 const ProgressiveForm = () => {
     const navigate = useNavigate();
     const dispatch = useDispatch();
-    const reduceMotion = useReducedMotion();
+    const reduceMotion = usePrefersReducedMotion();
     const [form] = Form.useForm();
     const [isLoading, setIsLoading] = useState(false);
     const [submissionStage, setSubmissionStage] = useState('idle');
     const [registeredToken, setRegisteredToken] = useState('');
     const submissionInFlightRef = useRef(false);
     const redirectTimerRef = useRef(null);
-    const watchedValues = Form.useWatch([], form);
 
     useEffect(() => () => {
         if (redirectTimerRef.current) clearTimeout(redirectTimerRef.current);
     }, []);
 
     const isSuccess = submissionStage === 'success';
-    const filledCount = REQUIRED_FIELDS
-        .filter((field) => isFieldFilled(watchedValues?.[field])).length;
-    const completionPercent = isSuccess
-        ? 100
-        : Math.round((filledCount / REQUIRED_FIELDS.length) * 100);
 
     const startParticipantSession = async (token) => {
         await findValidSession(token);
@@ -342,93 +303,22 @@ const ProgressiveForm = () => {
     };
 
     const lockRegisteredFields = Boolean(registeredToken);
-    const activeFlowStep = isSuccess
-        ? 2
-        : lockRegisteredFields || submissionStage === 'preparing'
-            ? 1
-            : 0;
     const loadingLabel = submissionStage === 'preparing'
         ? 'در حال آماده‌سازی جلسه…'
         : 'در حال ثبت اطلاعات…';
-    const meterLabel = isSuccess
-        ? 'همه‌چیز آماده است'
-        : filledCount === REQUIRED_FIELDS.length
-            ? 'آماده ارسال'
-            : `${toPersianDigits(filledCount)} از ${toPersianDigits(REQUIRED_FIELDS.length)} مورد تکمیل شده`;
 
     return (
         <div className={`signup-card${isSuccess ? ' signup-card--success' : ''}`}>
-            <span className="signup-card__sheen" aria-hidden="true" />
-            <span className="signup-card__scan" aria-hidden="true" />
-
             <div className="signup-card__header">
-                <div className="signup-card__icon" aria-hidden="true">
-                    <span className="signup-card__icon-ring" />
-                    <IdcardOutlined />
-                </div>
-                <div className="signup-card__heading">
-                    <span className="signup-card__eyebrow">
-                        <ThunderboltFilled aria-hidden="true" />
-                        فرم شروع آزمون
-                    </span>
-                    <h2 id="registration-form-title">اطلاعات اولیه شما</h2>
-                    <p>برای ساخت جلسه آزمون، هر چهار مورد را تکمیل کنید.</p>
-                </div>
+                <h2 id="registration-form-title">شروع آزمون</h2>
+                <p>برای ساخت جلسه، چهار مورد زیر را تکمیل کنید.</p>
             </div>
-
-            <div
-                className="signup-meter"
-                role="progressbar"
-                aria-valuemin={0}
-                aria-valuemax={100}
-                aria-valuenow={completionPercent}
-                aria-label="میزان تکمیل فرم"
-            >
-                <div className="signup-meter__top">
-                    <span className="signup-meter__label">
-                        <SolutionOutlined aria-hidden="true" />
-                        {meterLabel}
-                    </span>
-                    <span className="signup-meter__value">{toPersianDigits(completionPercent)}٪</span>
-                </div>
-                <div className="signup-meter__track">
-                    <span
-                        className="signup-meter__fill"
-                        style={{ width: `${completionPercent}%` }}
-                    />
-                </div>
-            </div>
-
-            <ol className="signup-flow" aria-label="مراحل شروع آزمون">
-                {flowSteps.map((step, index) => {
-                    const StepIcon = step.icon;
-                    const state = index < activeFlowStep
-                        ? 'complete'
-                        : index === activeFlowStep
-                            ? 'active'
-                            : 'pending';
-
-                    return (
-                        <li
-                            key={step.label}
-                            className={`signup-flow__step signup-flow__step--${state}`}
-                            aria-current={state === 'active' ? 'step' : undefined}
-                        >
-                            <span className="signup-flow__icon" aria-hidden="true">
-                                {state === 'complete' ? <CheckOutlined /> : <StepIcon />}
-                            </span>
-                            <span>{step.label}</span>
-                        </li>
-                    );
-                })}
-            </ol>
 
             {registeredToken && !isSuccess && (
                 <div className="signup-retry-note" role="status">
                     <SafetyCertificateOutlined aria-hidden="true" />
                     <span>
-                        <strong>اطلاعات شما ثبت شده است.</strong>
-                        برای ادامه، آماده‌سازی جلسه را دوباره امتحان کنید.
+                        اطلاعات شما ثبت شده است؛ برای ادامه، دوباره تلاش کنید.
                     </span>
                 </div>
             )}
@@ -447,117 +337,109 @@ const ProgressiveForm = () => {
                     block: 'center',
                 }}
             >
-                <div className="signup-field signup-field--first">
-                    <Form.Item
-                        label={<FieldLabel icon={UserOutlined} text="شناسه شرکت‌کننده" hint="الزامی" />}
-                        name="subject_id"
-                        rules={[
-                            { required: true, message: 'شناسه شرکت‌کننده را وارد کنید.' },
-                            {
-                                validator: (_, value) => value?.trim()
-                                    ? Promise.resolve()
-                                    : Promise.reject(new Error('شناسه نمی‌تواند خالی باشد.')),
-                            },
-                        ]}
-                    >
-                        <Input
-                            prefix={<IdcardOutlined aria-hidden="true" />}
-                            placeholder="شناسه‌ای که پژوهشگر در اختیار شما گذاشته است"
-                            disabled={isLoading || lockRegisteredFields}
-                            maxLength={64}
-                            autoCapitalize="none"
-                            spellCheck={false}
-                            dir="auto"
-                        />
-                    </Form.Item>
-                </div>
+                <Form.Item
+                    label="شناسه شرکت‌کننده"
+                    name="subject_id"
+                    rules={[
+                        { required: true, message: 'شناسه شرکت‌کننده را وارد کنید.' },
+                        {
+                            validator: (_, value) => value?.trim()
+                                ? Promise.resolve()
+                                : Promise.reject(new Error('شناسه نمی‌تواند خالی باشد.')),
+                        },
+                    ]}
+                >
+                    <Input
+                        prefix={<IdcardOutlined aria-hidden="true" />}
+                        placeholder="شناسه دریافتی از پژوهشگر"
+                        disabled={isLoading || lockRegisteredFields}
+                        maxLength={64}
+                        autoCapitalize="none"
+                        spellCheck={false}
+                        dir="auto"
+                    />
+                </Form.Item>
 
                 <div className="signup-fields-row">
-                    <div className="signup-field signup-field--second">
-                        <Form.Item
-                            label={<FieldLabel icon={NumberOutlined} text="سن" />}
-                            name="age"
-                            rules={[
-                                { required: true, message: 'سن را وارد کنید.' },
-                                { type: 'integer', message: 'سن باید یک عدد کامل باشد.' },
-                                { type: 'number', min: 1, max: 120, message: 'سن باید بین ۱ تا ۱۲۰ باشد.' },
-                            ]}
-                        >
-                            <InputNumber
-                                prefix={<NumberOutlined aria-hidden="true" />}
-                                placeholder="سن"
-                                min={1}
-                                max={120}
-                                precision={0}
-                                controls={false}
-                                inputMode="numeric"
-                                disabled={isLoading || lockRegisteredFields}
-                                aria-label="سن شرکت‌کننده"
-                            />
-                        </Form.Item>
-                    </div>
-
-                    <div className="signup-field signup-field--third">
-                        <Form.Item
-                            label={<FieldLabel icon={TeamOutlined} text="شماره گروه" />}
-                            name="group"
-                            rules={[
-                                { required: true, message: 'شماره گروه را وارد کنید.' },
-                                { type: 'integer', message: 'شماره گروه باید یک عدد کامل باشد.' },
-                                { type: 'number', min: 0, message: 'شماره گروه نمی‌تواند منفی باشد.' },
-                            ]}
-                        >
-                            <InputNumber
-                                prefix={<TeamOutlined aria-hidden="true" />}
-                                placeholder="شماره گروه"
-                                min={0}
-                                precision={0}
-                                controls={false}
-                                inputMode="numeric"
-                                disabled={isLoading || lockRegisteredFields}
-                                aria-label="شماره گروه شرکت‌کننده"
-                            />
-                        </Form.Item>
-                    </div>
-                </div>
-
-                <div className="signup-field signup-field--fourth">
                     <Form.Item
-                        label={<FieldLabel icon={UserSwitchOutlined} text="جنسیت" />}
-                        name="gender"
-                        rules={[{ required: true, message: 'جنسیت را انتخاب کنید.' }]}
+                        label="سن"
+                        name="age"
+                        rules={[
+                            { required: true, message: 'سن را وارد کنید.' },
+                            { type: 'integer', message: 'سن باید یک عدد کامل باشد.' },
+                            { type: 'number', min: 1, max: 120, message: 'سن باید بین ۱ تا ۱۲۰ باشد.' },
+                        ]}
                     >
-                        <Radio.Group
-                            className="signup-choice"
-                            block
-                            optionType="button"
-                            buttonStyle="solid"
+                        <InputNumber
+                            prefix={<NumberOutlined aria-hidden="true" />}
+                            placeholder="سن"
+                            min={1}
+                            max={120}
+                            precision={0}
+                            controls={false}
+                            inputMode="numeric"
                             disabled={isLoading || lockRegisteredFields}
-                            role="radiogroup"
-                            aria-label="جنسیت شرکت‌کننده"
-                            options={[
-                                {
-                                    value: 'MALE',
-                                    label: (
-                                        <span className="signup-choice__label">
-                                            <ManOutlined aria-hidden="true" />
-                                            مرد
-                                        </span>
-                                    ),
-                                },
-                                {
-                                    value: 'FEMALE',
-                                    label: (
-                                        <span className="signup-choice__label">
-                                            <WomanOutlined aria-hidden="true" />
-                                            زن
-                                        </span>
-                                    ),
-                                },
-                            ]}
+                            aria-label="سن شرکت‌کننده"
+                        />
+                    </Form.Item>
+
+                    <Form.Item
+                        label="شماره گروه"
+                        name="group"
+                        rules={[
+                            { required: true, message: 'شماره گروه را وارد کنید.' },
+                            { type: 'integer', message: 'شماره گروه باید یک عدد کامل باشد.' },
+                            { type: 'number', min: 0, message: 'شماره گروه نمی‌تواند منفی باشد.' },
+                        ]}
+                    >
+                        <InputNumber
+                            prefix={<TeamOutlined aria-hidden="true" />}
+                            placeholder="شماره گروه"
+                            min={0}
+                            precision={0}
+                            controls={false}
+                            inputMode="numeric"
+                            disabled={isLoading || lockRegisteredFields}
+                            aria-label="شماره گروه شرکت‌کننده"
                         />
                     </Form.Item>
                 </div>
+
+                <Form.Item
+                    label="جنسیت"
+                    name="gender"
+                    rules={[{ required: true, message: 'جنسیت را انتخاب کنید.' }]}
+                >
+                    <Radio.Group
+                        className="signup-choice"
+                        block
+                        optionType="button"
+                        buttonStyle="solid"
+                        disabled={isLoading || lockRegisteredFields}
+                        role="radiogroup"
+                        aria-label="جنسیت شرکت‌کننده"
+                        options={[
+                            {
+                                value: 'MALE',
+                                label: (
+                                    <span className="signup-choice__label">
+                                        <ManOutlined aria-hidden="true" />
+                                        مرد
+                                    </span>
+                                ),
+                            },
+                            {
+                                value: 'FEMALE',
+                                label: (
+                                    <span className="signup-choice__label">
+                                        <WomanOutlined aria-hidden="true" />
+                                        زن
+                                    </span>
+                                ),
+                            },
+                        ]}
+                    />
+                </Form.Item>
 
                 <Form.Item className="signup-submit-item">
                     <Button
@@ -580,16 +462,16 @@ const ProgressiveForm = () => {
                             : isLoading
                                 ? loadingLabel
                                 : registeredToken
-                                    ? 'تلاش دوباره برای شروع آزمون'
+                                    ? 'تلاش دوباره'
                                     : 'شروع آزمون'}
                     </Button>
                 </Form.Item>
             </Form>
 
-            <div className="signup-privacy-note">
+            <p className="signup-privacy-note">
                 <LockOutlined aria-hidden="true" />
-                <span>اطلاعات واردشده تنها در چارچوب این پژوهش استفاده می‌شود.</span>
-            </div>
+                اطلاعات واردشده تنها در چارچوب این پژوهش استفاده می‌شود.
+            </p>
 
             {isSuccess && (
                 <div className="signup-card__success" role="status">
