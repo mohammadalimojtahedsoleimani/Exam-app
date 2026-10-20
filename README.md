@@ -110,6 +110,12 @@ The rounded response time is submitted in milliseconds:
 
 Repeated keydown events and duplicate in-flight submissions are ignored. If submission fails, retrying preserves the original answer and measured response time.
 
+Before sending an answer, its complete payload is saved in a browser checkpoint. The checkpoint advances only after the API accepts the answer or explicitly confirms that it was already submitted. Refreshing retries an interrupted payload with the original reaction time; an unanswered cluster restarts at `INITIAL` and presents `COMPARISON` and `TARGET` again.
+
+A 4xx response whose `detail` or `details` confirms that this cluster's answer was already submitted advances through the normal next-cluster sequence. On the final cluster, it completes the phase. Other failures keep the response available for retry.
+
+Only when response data cannot be recovered does submission use `LEFT` for a missing/invalid answer or `0` milliseconds for a missing/invalid reaction time. Each field is recovered independently, so valid participant data is preserved. Fallback use is logged in the browser console. These defaults are configured in `src/utils/trialSubmission.js`; a default answer is a placeholder, not an observed participant response. Retrying never includes time spent waiting to retry in the reaction time.
+
 > [!NOTE]
 > Backend duration values need to be expressed in milliseconds. Fixation and stimulus durations are scheduled against a `performance.now()` deadline evaluated inside `requestAnimationFrame`, so every duration ends on a frame that was actually presented instead of whenever a `setTimeout` happens to fire. Durations are therefore quantised to the display's refresh interval. The target state has no automatic timeout and waits for a valid participant response.
 
@@ -185,11 +191,13 @@ The active phase UUID, Persian name, `has_video`, and `video_seen` values come d
 - Phase 1 uses its own text and `first_ins.mp3`.
 - Phases 3 and 4 share the same instruction text and `second_ins.mp3`.
 - Phase 2 redirects directly to the trial and never displays instructions.
-- Narration starts automatically. Reaching this screen always involves a click, which normally satisfies the browser's autoplay policy; when playback is still blocked, a persistent Persian prompt asks the participant to start it manually.
+- One preloaded audio element waits for media readiness before attempting automatic playback. Browser autoplay restrictions show a Persian play prompt; the play button starts narration directly from the user gesture.
+- A transient startup failure is retried once. Further errors offer a manual reload/play retry and never reveal all text or enable the start button as though narration had finished.
 - Text reveal is calculated from audio `currentTime / duration` and weighted by line length.
 - Pausing narration pauses both text progression and the active reveal animation.
 - Resuming narration continues them from the same point.
 - The start button remains disabled until narration finishes.
+- Replaying completed narration restarts the text reveal. Reduced-motion settings remove the reveal animation while keeping the text synchronized with the voice.
 
 ### Mood video flow
 
@@ -273,10 +281,20 @@ Phase numbers, routes, instruction rules, completion behavior, and transitions a
 ### Layered state management
 
 - **Redux Toolkit** keeps authentication state available to React components.
-- **Local storage** preserves the token, current phase ordinal, backend UUID, session ID, phase name, and video state across route changes and refreshes.
-- **Component state and refs** manage fast trial substates, timers, request locks, retry data, and media elements without unnecessary global updates.
+- **Local storage** preserves the token, current phase ordinal, backend UUID, session ID, phase name, video state, and trial checkpoints across route changes and refreshes.
+- **Component state and refs** manage fast trial substates, timers, request locks, the active retry payload, and media elements without unnecessary global updates.
 
 The final screen removes only experiment-related storage keys and resets Redux authentication state; it does not clear unrelated browser storage.
+
+Refreshing the instruction screen preserves the participant token and session metadata and restarts narration; merely loading this screen does not register a participant or create a session.
+
+### Trial checkpoints and refresh recovery
+
+`probeTrialProgress` stores independent checkpoints bound to the participant token, session ID, API phase UUID, and phase position. Each checkpoint contains the cluster order, the number of confirmed answers, any pending answer with its original reaction time, and whether phase completion was acknowledged. The remaining stimuli are restored by cluster ID, so reordering the API response does not change the saved sequence or repeat confirmed answers.
+
+Refreshing during `INITIAL`, `COMPARISON`, or `TARGET` restarts the same unanswered cluster at `INITIAL`. Refreshing during submission automatically retries the saved payload before presenting another cluster. A confirmed final answer resumes phase completion without replaying stimuli, including when the API returns no remaining clusters. A saved phase-completion acknowledgment prevents another completion request; an explicit already-completed response also allows an interrupted completion request to recover.
+
+Checkpoint writes occur before submission and before presenting the next cluster, outside stimulus timing. A storage failure pauses the flow with a retry message. Checkpoints are isolated from another participant or session, and finishing the exam removes them along with the other experiment storage keys. Recovery applies in the same browser with its local storage retained; registration and creating a new session still rely on the existing API flow.
 
 ### Event-driven experiment states
 
