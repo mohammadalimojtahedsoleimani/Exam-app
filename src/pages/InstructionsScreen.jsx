@@ -15,11 +15,11 @@ import {
   ReadOutlined,
   VideoCameraOutlined,
   PauseCircleOutlined,
-  PlayCircleOutlined,
-  SoundOutlined
+  PlayCircleOutlined
 } from '@ant-design/icons';
 import { findValidSession } from "../api/probes.js";
 import { useLockedViewport } from "../hooks/useLockedViewport.js";
+import { createInstructionNarration, INITIAL_NARRATION_STATE } from "../utils/instructionNarration.js";
 import {
   APP_ROUTE,
   parsePhase,
@@ -156,8 +156,6 @@ const styles = {
   }
 };
 
-const AUDIO_PROMPT_TOAST_ID = 'instruction-toast';
-
 const InstructionsScreen = () => {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
@@ -167,15 +165,12 @@ const InstructionsScreen = () => {
   useLockedViewport();
 
   // Animation & Audio State
-  const [hasStarted, setHasStarted] = useState(false);
-  const [hasFinished, setHasFinished] = useState(false);
-  const [visibleElements, setVisibleElements] = useState(0);
-  const [isPlaying, setIsPlaying] = useState(false);
+  const [narration, setNarration] = useState(INITIAL_NARRATION_STATE);
+  const {hasStarted, hasFinished, visibleElements, status: narrationStatus} = narration;
+  const isPlaying = narrationStatus === 'PLAYING';
   const audioRef = useRef(null);
+  const narrationRef = useRef(null);
   const navigationInFlightRef = useRef(false);
-
-  // Toast ID
-  const toastId = useRef(null);
 
   const currentPhase = parsePhase(localStorage.getItem('currentPhase'));
   const isInterventionPhase = phaseUsesMoodInstructions(currentPhase);
@@ -222,122 +217,29 @@ const InstructionsScreen = () => {
   }, [currentPhase, navigate]);
 
 
-  // Initialize Audio & Toast
+  // The DOM owns one preloaded audio element across effect replays. Text only
+  // advances with real playback; a loading error must not complete the guide.
   useEffect(() => {
     if (!phaseHasInstructions(currentPhase)) return undefined;
 
-    const audio = new Audio(activeAudioSrc);
-    audioRef.current = audio;
-
-    const handlePlay = () => {
-      setHasStarted(true);
-      setIsPlaying(true);
-      setVisibleElements((previous) => Math.max(previous, 1));
-    };
-    const handlePause = () => setIsPlaying(false);
-    const handleTimeUpdate = () => {
-      if (!Number.isFinite(audio.duration) || audio.duration <= 0) return;
-
-      const elapsed = audio.currentTime / audio.duration;
-      const nextVisibleCount = revealThresholds.reduce(
-          (count, threshold) => count + (elapsed >= threshold ? 1 : 0),
-          0,
-      );
-      setVisibleElements((previous) => Math.max(previous, nextVisibleCount));
-    };
-    const handleEnded = () => {
-      setIsPlaying(false);
-      setVisibleElements(activeInstructions.length);
-      setHasFinished(true);
-    };
-    const handleError = () => {
-      setIsPlaying(false);
-      setVisibleElements(activeInstructions.length);
-      setHasFinished(true);
-    };
-
-    audio.addEventListener('play', handlePlay);
-    audio.addEventListener('pause', handlePause);
-    audio.addEventListener('timeupdate', handleTimeUpdate);
-    audio.addEventListener('ended', handleEnded);
-    audio.addEventListener('error', handleError);
-
-    // CUSTOM TOAST CONTENT
-    const CustomToast = () => (
-        <div className="flex items-center gap-3 rtl" dir="rtl">
-          <div className="flex items-center justify-center w-10 h-10 rounded-full bg-[#2dd4bf]/20 border border-[#2dd4bf]/40 animate-pulse">
-            <SoundOutlined style={{ color: '#2dd4bf', fontSize: '20px' }} />
-          </div>
-          <div className="flex flex-col">
-            <span className="text-[#f1f5f9] font-bold text-sm">آماده‌اید؟</span>
-            <span className="text-slate-300 text-xs">برای شنیدن توضیحات دکمه پخش صدا را بزنید.</span>
-          </div>
-        </div>
-    );
-
-    const showPlayPrompt = () => {
-      toastId.current = toast(
-          <CustomToast />,
-          {
-            theme: "dark",
-            autoClose: false,
-            closeOnClick: false,
-            draggable: false,
-            closeButton: false, // Remove default X button for cleaner look
-            position: "top-right",
-            className: "custom-toast-container",
-            toastId: AUDIO_PROMPT_TOAST_ID
-          }
-      );
-    };
-
-    // Try to narrate immediately. Entering the exam always involves a click
-    // (registration, fullscreen, "next phase"), so the document usually carries a
-    // user activation and playback is allowed. When a browser still blocks it, the
-    // persistent prompt asks the participant to start the narration by hand — the
-    // text reveal is driven by audio progress either way.
-    let isCancelled = false;
-
-    audio.play().catch((playError) => {
-      if (isCancelled) return;
-
-      console.warn('Instruction narration could not start automatically', playError);
-      showPlayPrompt();
+    const player = createInstructionNarration({
+      audio: audioRef.current,
+      revealThresholds,
+      onChange: setNarration,
     });
+    narrationRef.current = player;
+    player.start();
 
     return () => {
-      isCancelled = true;
-      audio.removeEventListener('play', handlePlay);
-      audio.removeEventListener('pause', handlePause);
-      audio.removeEventListener('timeupdate', handleTimeUpdate);
-      audio.removeEventListener('ended', handleEnded);
-      audio.removeEventListener('error', handleError);
-      audio.pause();
-      if (audioRef.current === audio) {
-        audioRef.current = null;
-      }
-      if(toastId.current) toast.dismiss(toastId.current);
+      player.destroy();
+      if (narrationRef.current === player) narrationRef.current = null;
     };
-  }, [activeAudioSrc, activeInstructions, currentPhase, revealThresholds]);
+  }, [activeAudioSrc, currentPhase, revealThresholds]);
 
 
   // Toggle Play / Start
-  const handleTogglePlay = async () => {
-    const audio = audioRef.current;
-    if (!audio) return;
-
-    if (!audio.paused) {
-      audio.pause();
-      return;
-    }
-
-    try {
-      await audio.play();
-      toast.dismiss(AUDIO_PROMPT_TOAST_ID);
-    } catch (error) {
-      setIsPlaying(false);
-      console.error("Audio play error", error);
-    }
+  const handleTogglePlay = () => {
+    narrationRef.current?.toggle();
   };
 
 
@@ -403,6 +305,7 @@ const InstructionsScreen = () => {
       >
         <div style={styles.backgroundWrapper}>
           <ToastContainer position="top-right" newestOnTop rtl={true} />
+          <audio ref={audioRef} src={activeAudioSrc} preload="auto" aria-hidden="true" />
 
           <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
             <div className="absolute top-[-10%] left-[30%] w-[50vw] h-[50vw] rounded-full bg-[#14b8a6] opacity-10 blur-[120px]"></div>
@@ -417,7 +320,7 @@ const InstructionsScreen = () => {
               {/* Audio Player Button */}
               <button
                   type="button"
-                  aria-label={isPlaying ? 'توقف پخش صدا' : 'پخش صدا'}
+                  aria-label={isPlaying ? 'توقف پخش صدا' : narrationStatus === 'ERROR' ? 'تلاش دوباره برای پخش صدا' : 'پخش صدا'}
                   aria-pressed={isPlaying}
                   style={styles.audioPlayer}
                   onClick={handleTogglePlay}
@@ -435,7 +338,7 @@ const InstructionsScreen = () => {
                 ) : (
                     <>
                         <span className={`text-xs pl-1 transition-colors ${!hasStarted ? 'text-[#2dd4bf] font-bold' : 'text-slate-400 group-hover:text-slate-200'}`}>
-                            {hasStarted ? 'پخش' : 'پخش صدا'}
+                            {narrationStatus === 'ERROR' ? 'تلاش دوباره' : hasStarted ? 'پخش' : 'پخش صدا'}
                         </span>
                       <PlayCircleOutlined style={{ fontSize: 20, color: hasStarted ? '#94a3b8' : '#2dd4bf' }} className="transition-colors" />
                     </>
@@ -453,14 +356,27 @@ const InstructionsScreen = () => {
               </div>
             </div>
 
+            <div
+                role="status"
+                data-narration-status={narrationStatus}
+                dir="rtl"
+                className="text-center text-sm text-slate-300"
+                style={{minHeight: '1.5rem'}}
+            >
+              {narrationStatus === 'LOADING' && 'در حال آماده‌سازی توضیحات صوتی...'}
+              {narrationStatus === 'BLOCKED' && 'برای شنیدن توضیحات و نمایش راهنما، دکمه پخش صدا را بزنید.'}
+              {narrationStatus === 'ERROR' && 'پخش صدا انجام نشد. برای بارگذاری و پخش دوباره، دکمه تلاش دوباره را بزنید.'}
+            </div>
+
             <div style={styles.contentContainer} className="custom-scrollbar" dir="rtl">
               <div className="space-y-5 pb-4">
                 {activeInstructions.map((text, index) => (
                     <div
                         key={index}
+                        aria-hidden={index >= visibleElements}
                         className={`
                             flex items-start gap-4
-                            ${index < visibleElements ? 'instruction-reveal' : 'opacity-0 translate-y-4 blur-sm'}
+                            ${index < visibleElements ? 'instruction-reveal' : 'instruction-pending'}
                         `}
                         style={{ animationPlayState: isPlaying || hasFinished ? 'running' : 'paused' }}
                     >
@@ -538,12 +454,17 @@ const InstructionsScreen = () => {
             .instruction-reveal {
               animation: instruction-reveal 700ms cubic-bezier(0.22, 1, 0.36, 1) both;
             }
+            .instruction-pending {
+              visibility: hidden;
+              opacity: 0;
+              transform: translateY(16px);
+            }
             @keyframes instruction-reveal {
               from { opacity: 0; transform: translateY(16px); filter: blur(4px); }
               to { opacity: 1; transform: translateY(0); filter: blur(0); }
             }
             @media (prefers-reduced-motion: reduce) {
-              .instruction-reveal { animation-duration: 1ms; }
+              .instruction-reveal { animation: none; }
             }
           `}</style>
         </div>

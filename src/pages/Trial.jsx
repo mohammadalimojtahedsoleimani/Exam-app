@@ -1,17 +1,26 @@
 import React, {useState, useEffect, useCallback, useMemo, useRef} from 'react';
-import axios from 'axios';
 import {useLocation, useNavigate} from 'react-router-dom';
 import {Button, ConfigProvider, theme, Typography} from 'antd';
 import {
     getSessionClusters,
     setPhaseComplete,
     setVideoSeen,
-    findValidSession
+    findValidSession,
+    submitTrialAnswer,
 } from "../api/probes.js";
 import {PlayCircleOutlined, FileTextOutlined, LoadingOutlined} from '@ant-design/icons';
-import {API_SERVER} from "../utils/API_SERVER.js";
 import {useFullscreenPromptPause} from "../context/fullscreenContext.js";
 import {useLockedViewport} from "../hooks/useLockedViewport.js";
+import {getTrialErrorMessage, isAlreadyCompletedError} from "../utils/trialErrors.js";
+import {createTrialSubmission} from "../utils/trialSubmission.js";
+import {
+    readTrialProgress,
+    writeTrialProgress,
+    restoreTrialProgress,
+    stageTrialSubmission,
+    confirmTrialSubmission,
+    isTrialProgressComplete,
+} from "../utils/trialProgress.js";
 import {
     APP_ROUTE,
     getTrialCompletionTransition,
@@ -202,8 +211,11 @@ const Trial = () => {
 
     const loadedSessionIdRef = useRef(null);
     const loadRequestIdRef = useRef(0);
+    const progressScopeRef = useRef(null);
+    const progressRef = useRef(null);
     const targetStartTimeRef = useRef(null);
     const submissionInFlightRef = useRef(false);
+    const lastSubmittedTrialIndexRef = useRef(null);
     const phaseTransitionInFlightRef = useRef(false);
     const phaseCompletionSavedRef = useRef(false);
     const videoSeenInFlightRef = useRef(false);
@@ -217,13 +229,78 @@ const Trial = () => {
     const isStageMounted = globalStatus === 'TEST' || globalStatus === 'SAVING_ANSWER';
     const isStimulusScreen = isStageMounted
         || globalStatus === 'PREPARING'
+        || globalStatus === 'RESTORING'
+        || globalStatus === 'RESUMING_PHASE'
         || globalStatus === 'FINISHED';
 
     // No document scrolling and no fullscreen nudges while stimuli are on screen.
     useLockedViewport(isStimulusScreen);
     useFullscreenPromptPause(isStimulusScreen);
 
+    const handleTrialError = useCallback((error, status, fallbackMessage) => {
+        console.error(`Trial ${status}:`, error);
+        setFlowError(getTrialErrorMessage(error, fallbackMessage));
+        setGlobalStatus(status);
+    }, []);
+
+    const persistProgress = useCallback((scope, progress) => {
+        const saved = writeTrialProgress(localStorage, scope, progress);
+        progressRef.current = saved;
+        return saved;
+    }, []);
+
+    const finishCurrentPhase = useCallback(async () => {
+        if (phaseTransitionInFlightRef.current) return;
+        const operation = {};
+        phaseTransitionInFlightRef.current = operation;
+        const scope = progressScopeRef.current;
+        const requestId = loadRequestIdRef.current;
+        const isCurrent = () => scope && progressScopeRef.current === scope && requestId === loadRequestIdRef.current;
+        setGlobalStatus('FINISHED');
+        setFlowError('');
+
+        try {
+            const transition = getTrialCompletionTransition(currentPhase);
+            if (!isCurrent() || !isTrialProgressComplete(progressRef.current)) {
+                throw new Error('This phase still has unconfirmed answers.');
+            }
+
+            if (transition.completeSession) {
+                if (!phaseCompletionSavedRef.current) {
+                    try {
+                        await setPhaseComplete(scope.token, scope.sessionId);
+                    } catch (error) {
+                        if (!isAlreadyCompletedError(error)) throw error;
+                    }
+                    if (!isCurrent()) return;
+                    phaseCompletionSavedRef.current = true;
+                }
+                if (!progressRef.current.phaseCompletionSaved) {
+                    persistProgress(scope, {...progressRef.current, phaseCompletionSaved: true});
+                }
+            }
+
+            if (transition.prepareNextSession) {
+                await findValidSession(scope.token);
+                if (!isCurrent()) return;
+            }
+            if (transition.nextPhase !== null) {
+                localStorage.setItem('currentPhase', String(transition.nextPhase));
+            }
+            localStorage.setItem('currentState', transition.state);
+            navigate(transition.route, {replace: true});
+        } catch (error) {
+            if (isCurrent()) {
+                handleTrialError(error, 'FLOW_ERROR', 'ثبت پایان مرحله انجام نشد. لطفاً دوباره تلاش کنید.');
+            }
+        } finally {
+            if (phaseTransitionInFlightRef.current === operation) phaseTransitionInFlightRef.current = false;
+        }
+    }, [currentPhase, navigate, handleTrialError, persistProgress]);
+
     useEffect(() => {
+        let disposed = false;
+        let activeRequestId = null;
         // Every stimulus of the session is fetched and decoded before the first
         // fixation cross, so no trial can ever wait on the network. For mood
         // phases this runs while the participant reads the text and watches the
@@ -246,6 +323,8 @@ const Trial = () => {
 
         const fetchData = async () => {
             let requestId = null;
+            let restoringAnswer = false;
+            const isCurrent = () => !disposed && requestId === loadRequestIdRef.current;
 
             try {
                 const sessionID = localStorage.getItem('currentSessionID');
@@ -255,9 +334,16 @@ const Trial = () => {
                     throw new Error('The current phase session is incomplete.');
                 }
 
+                const scope = {
+                    token, sessionId: sessionID, phase: currentPhase,
+                    phaseId: localStorage.getItem('currentPhaseID'),
+                };
+                let progress = readTrialProgress(localStorage, scope);
+
                 if (
                     phaseHasInstructions(currentPhase) &&
-                    localStorage.getItem('currentState') !== 'Exam'
+                    localStorage.getItem('currentState') !== 'Exam' &&
+                    !isTrialProgressComplete(progress)
                 ) {
                     navigate(APP_ROUTE.INSTRUCTIONS, {replace: true});
                     return;
@@ -267,29 +353,53 @@ const Trial = () => {
                     throw new Error('The current phase session is incomplete.');
                 }
 
-                if (loadedSessionIdRef.current === sessionID) return;
-                loadedSessionIdRef.current = sessionID;
+                const sessionKey = JSON.stringify(scope);
+                if (loadedSessionIdRef.current === sessionKey) return;
+                loadedSessionIdRef.current = sessionKey;
                 requestId = ++loadRequestIdRef.current;
-                phaseCompletionSavedRef.current = false;
-                setGlobalStatus('LOADING');
+                activeRequestId = requestId;
+                progressScopeRef.current = scope;
+                progressRef.current = progress;
+                phaseCompletionSavedRef.current = progress?.phaseCompletionSaved === true;
+                submissionInFlightRef.current = false;
+                phaseTransitionInFlightRef.current = false;
+                setGlobalStatus(progress ? 'RESTORING' : 'LOADING');
                 setFlowError('');
                 setExams(null);
                 setCurrentTrialIndex(0);
                 setTrialPhase('INITIAL');
+                targetStartTimeRef.current = null;
+                lastSubmittedTrialIndexRef.current = null;
+                setPendingSubmission(null);
                 setIsVideoComplete(false);
                 setAreStimuliReady(false);
                 decodedStimuliRef.current = [];
 
-                const data = await getSessionClusters(token, sessionID);
-
-                if (requestId !== loadRequestIdRef.current) return;
-
-                if (!data.data?.clusters?.length) {
-                    throw new Error('No trials were returned for this phase.');
+                // Replay the durable payload before loading any stimuli. It may
+                // have reached the server before the old page was unloaded.
+                if (progress?.pendingSubmission) {
+                    restoringAnswer = true;
+                    setPendingSubmission(progress.pendingSubmission);
+                    await submitTrialAnswer(token, progress.pendingSubmission);
+                    if (!isCurrent()) return;
+                    progress = persistProgress(scope, confirmTrialSubmission(progress));
+                    setPendingSubmission(null);
+                    restoringAnswer = false;
                 }
 
-                setExams(data);
-                warmUpStimuli(data.data.clusters, requestId);
+                if (isTrialProgressComplete(progress)) {
+                    setGlobalStatus('RESUMING_PHASE');
+                    return;
+                }
+
+                const data = await getSessionClusters(token, sessionID);
+
+                if (!isCurrent()) return;
+
+                const restored = restoreTrialProgress(progress, data.data?.clusters);
+                persistProgress(scope, restored.progress);
+                setExams({...data, data: {...data.data, clusters: restored.clusters}});
+                warmUpStimuli(restored.clusters, requestId);
 
                 const apiExpectsVideo = localStorage.getItem('currentPhaseHasVideo') === 'true';
                 const hasSessionVideo = Boolean(data.data?.video?.file);
@@ -314,17 +424,31 @@ const Trial = () => {
                 }
 
             } catch (error) {
-                if (requestId !== null && requestId !== loadRequestIdRef.current) return;
+                if (disposed || (requestId !== null && !isCurrent())) return;
 
-                console.error("Failed to fetch exam data", error);
                 loadedSessionIdRef.current = null;
-                setFlowError('بارگذاری آزمون انجام نشد. لطفاً دوباره تلاش کنید.');
-                setGlobalStatus('LOAD_ERROR');
+                handleTrialError(error, 'LOAD_ERROR', restoringAnswer
+                    ? 'بازیابی پاسخ ذخیره‌شده انجام نشد. لطفاً دوباره تلاش کنید.'
+                    : 'بارگذاری آزمون انجام نشد. لطفاً دوباره تلاش کنید.');
             }
         };
 
-        fetchData();
-    }, [currentPhase, location.key, navigate]);
+        // A discarded StrictMode effect must not replay a pending POST twice.
+        const startTimer = setTimeout(fetchData, 0);
+        return () => {
+            disposed = true;
+            clearTimeout(startTimer);
+            if (activeRequestId !== null && activeRequestId === loadRequestIdRef.current) {
+                loadRequestIdRef.current += 1;
+                loadedSessionIdRef.current = null;
+                progressScopeRef.current = null;
+            }
+        };
+    }, [currentPhase, location.key, navigate, handleTrialError, persistProgress]);
+
+    useEffect(() => {
+        if (globalStatus === 'RESUMING_PHASE') finishCurrentPhase();
+    }, [globalStatus, finishCurrentPhase]);
 
     // --- Logic: Start the trials once every stimulus is decoded ---
     useEffect(() => {
@@ -360,50 +484,14 @@ const Trial = () => {
         );
     }, [globalStatus, currentTrial, trialPhase]);
 
-    const finishCurrentPhase = useCallback(async () => {
-        if (phaseTransitionInFlightRef.current) return;
-        phaseTransitionInFlightRef.current = true;
-        setGlobalStatus('FINISHED');
-        setFlowError('');
-
-        try {
-            const transition = getTrialCompletionTransition(currentPhase);
-            const sessionID = localStorage.getItem('currentSessionID');
-            const token = localStorage.getItem('authToken');
-
-            if (!token || !sessionID) {
-                throw new Error('The current phase session is incomplete.');
-            }
-
-            if (transition.completeSession && !phaseCompletionSavedRef.current) {
-                await setPhaseComplete(token, sessionID);
-                phaseCompletionSavedRef.current = true;
-            }
-
-            if (transition.prepareNextSession) {
-                await findValidSession(token);
-            }
-
-            if (transition.nextPhase !== null) {
-                localStorage.setItem('currentPhase', String(transition.nextPhase));
-            }
-
-            localStorage.setItem('currentState', transition.state);
-            navigate(transition.route, { replace: true });
-        } catch (error) {
-            console.error('Failed to complete the phase', error);
-            setFlowError('ثبت پایان مرحله انجام نشد. لطفاً دوباره تلاش کنید.');
-            setGlobalStatus('FLOW_ERROR');
-        } finally {
-            phaseTransitionInFlightRef.current = false;
-        }
-    }, [currentPhase, navigate]);
-
     // --- Logic: Advance to Next Trial ---
     const advanceToNextTrial = useCallback(async () => {
+        targetStartTimeRef.current = null;
+        setPendingSubmission(null);
+        setFlowError('');
+
         const trialCount = exams?.data?.clusters?.length ?? 0;
         if (currentTrialIndex < trialCount - 1) {
-            targetStartTimeRef.current = null;
             setCurrentTrialIndex(prev => prev + 1);
             setTrialPhase('INITIAL');
             setGlobalStatus('TEST');
@@ -415,52 +503,66 @@ const Trial = () => {
     // --- Logic: Submit Answer ---
     const handleSubmitAnswer = useCallback(async (
         participantAnswer,
-        savedResponseTime = null,
-        responseTimestamp = null,
+        {responseTimestamp = null, retry = false} = {},
     ) => {
-        if (!currentTrial || submissionInFlightRef.current) return;
-
-        const targetStartTime = targetStartTimeRef.current;
-        if (targetStartTime === null && savedResponseTime === null) return;
+        if (submissionInFlightRef.current) return;
+        if (currentTrial?.id == null || currentTrial.id === '') {
+            handleTrialError(new Error('The current cluster ID is missing.'),
+                'LOAD_ERROR', 'اطلاعات این بخش در دسترس نیست. لطفاً آزمون را دوباره بارگذاری کنید.');
+            return;
+        }
+        // State changes may not have rendered the next cluster yet. Do not let
+        // a second key event submit and advance the previous cluster again.
+        if (lastSubmittedTrialIndexRef.current === currentTrialIndex) return;
+        const scope = progressScopeRef.current;
+        const requestId = loadRequestIdRef.current;
+        const isCurrent = () => scope && progressScopeRef.current === scope && requestId === loadRequestIdRef.current;
+        if (!scope || !progressRef.current) {
+            handleTrialError(new Error('The trial checkpoint is not ready.'),
+                'LOAD_ERROR', 'اطلاعات پیشرفت آزمون در دسترس نیست. لطفاً دوباره تلاش کنید.');
+            return;
+        }
 
         // `event.timeStamp` is the moment the key event was generated, on the same
-        // clock as `performance.now()`; reading the clock inside the handler would
-        // instead include everything JS did before this line.
-        const responseAt = Number.isFinite(responseTimestamp) && responseTimestamp > 0
-            ? responseTimestamp
-            : performance.now();
-        const responseTime = savedResponseTime
-            ?? Math.max(0, Math.round(responseAt - targetStartTime));
-
-        const submissionData = {
-            cluster_id: currentTrial.id,
+        // clock as `performance.now()`. A retry uses its saved payload, without
+        // counting time spent waiting for the network or the retry button.
+        const {payload: submissionData, usedDefaultAnswer, usedDefaultResponseTime} = createTrialSubmission({
+            clusterId: currentTrial.id,
             answer: participantAnswer,
-            response_time: responseTime,
-        };
+            previousSubmission: retry ? (progressRef.current.pendingSubmission ?? pendingSubmission) : null,
+            targetStartTime: retry ? null : targetStartTimeRef.current,
+            responseTimestamp: retry ? null : responseTimestamp,
+            currentTimestamp: retry ? null : performance.now(),
+        });
 
-        submissionInFlightRef.current = true;
-        setPendingSubmission({answer: participantAnswer, responseTime});
+        if (usedDefaultAnswer || usedDefaultResponseTime) {
+            console.warn('Using fallback values for an incomplete trial response:', {
+                clusterId: currentTrial.id, usedDefaultAnswer, usedDefaultResponseTime,
+            });
+        }
+
+        const operation = {};
+        submissionInFlightRef.current = operation;
+        setPendingSubmission(submissionData);
         setFlowError('');
         setGlobalStatus('SAVING_ANSWER');
 
         try {
-            const userToken = localStorage.getItem('authToken');
-            const API_ENDPOINT = `${API_SERVER()}probe/results/create/`;
-            await axios.post(API_ENDPOINT, submissionData, {
-                headers: {'Authorization': `token ${userToken}`, 'Content-Type': 'application/json'},
-            });
+            // Persist before sending, then persist the acknowledgment before
+            // showing the next fixation. Refresh cannot lose the original time.
+            persistProgress(scope, stageTrialSubmission(progressRef.current, submissionData));
+            await submitTrialAnswer(scope.token, submissionData);
+            if (!isCurrent()) return;
+            persistProgress(scope, confirmTrialSubmission(progressRef.current));
 
-            targetStartTimeRef.current = null;
-            setPendingSubmission(null);
+            lastSubmittedTrialIndexRef.current = currentTrialIndex;
             await advanceToNextTrial();
         } catch (error) {
-            console.error('Error submitting answer:', error);
-            setFlowError('ثبت پاسخ انجام نشد. برای ارسال دوباره تلاش کنید.');
-            setGlobalStatus('ANSWER_ERROR');
+            if (isCurrent()) handleTrialError(error, 'ANSWER_ERROR', 'ثبت پاسخ انجام نشد. برای ارسال دوباره تلاش کنید.');
         } finally {
-            submissionInFlightRef.current = false;
+            if (submissionInFlightRef.current === operation) submissionInFlightRef.current = false;
         }
-    }, [advanceToNextTrial, currentTrial]);
+    }, [advanceToNextTrial, currentTrial, currentTrialIndex, handleTrialError, pendingSubmission, persistProgress]);
     // --- Logic: Keyboard Listener ---
     useEffect(() => {
         if (globalStatus !== 'TEST' || trialPhase !== 'TARGET') return;
@@ -471,10 +573,10 @@ const Trial = () => {
             const key = event.key.toUpperCase();
             if (key === 'D' || key === 'ARROWLEFT') {
                 event.preventDefault();
-                handleSubmitAnswer('LEFT', null, event.timeStamp);
+                handleSubmitAnswer('LEFT', {responseTimestamp: event.timeStamp});
             } else if (key === 'K' || key === 'ARROWRIGHT') {
                 event.preventDefault();
-                handleSubmitAnswer('RIGHT', null, event.timeStamp);
+                handleSubmitAnswer('RIGHT', {responseTimestamp: event.timeStamp});
             }
         };
 
@@ -493,8 +595,7 @@ const Trial = () => {
         try {
             await video.play();
         } catch (error) {
-            console.error('Video playback could not be resumed', error);
-            setFlowError('پخش ویدیو انجام نشد. لطفاً دوباره تلاش کنید.');
+            handleTrialError(error, 'VIDEO_LOAD_ERROR', 'پخش ویدیو انجام نشد. لطفاً دوباره تلاش کنید.');
         }
     };
 
@@ -517,10 +618,8 @@ const Trial = () => {
             setIsVideoComplete(true);
             setGlobalStatus('VIDEO');
         } catch (error) {
-            console.error('Failed to save video completion', error);
             setIsVideoComplete(false);
-            setFlowError('ثبت مشاهده ویدیو انجام نشد. لطفاً دوباره تلاش کنید.');
-            setGlobalStatus('VIDEO_ERROR');
+            handleTrialError(error, 'VIDEO_ERROR', 'ثبت مشاهده ویدیو انجام نشد. لطفاً دوباره تلاش کنید.');
         } finally {
             videoSeenInFlightRef.current = false;
             setIsSavingVideo(false);
@@ -542,8 +641,8 @@ const Trial = () => {
                 replace: true,
                 state: { retryAt: Date.now() },
             });
-        } else if (globalStatus === 'ANSWER_ERROR' && pendingSubmission) {
-            handleSubmitAnswer(pendingSubmission.answer, pendingSubmission.responseTime);
+        } else if (globalStatus === 'ANSWER_ERROR') {
+            handleSubmitAnswer(null, {retry: true});
         } else if (globalStatus === 'VIDEO_ERROR') {
             handleVideoEnded();
         } else if (globalStatus === 'VIDEO_LOAD_ERROR') {
@@ -636,9 +735,9 @@ const Trial = () => {
         >
             <div style={styles.backgroundWrapper}>
 
-                {globalStatus === 'LOADING' && (
-                    <div className="text-[#2dd4bf] text-2xl font-bold animate-pulse">
-                        در حال بارگذاری...
+                {['LOADING', 'RESTORING', 'RESUMING_PHASE'].includes(globalStatus) && (
+                    <div role="status" className="text-[#2dd4bf] text-2xl font-bold animate-pulse" dir="rtl">
+                        {globalStatus === 'LOADING' ? 'در حال بارگذاری...' : 'در حال بازیابی پیشرفت آزمون...'}
                     </div>
                 )}
 
@@ -665,7 +764,7 @@ const Trial = () => {
                         <Title level={3} style={{color: '#f8fafc', marginTop: 0}}>
                             ادامه آزمون امکان‌پذیر نیست
                         </Title>
-                        <Paragraph style={{color: '#fca5a5', fontSize: '16px'}}>
+                        <Paragraph role="alert" style={{color: '#fca5a5', fontSize: '16px'}}>
                             {flowError}
                         </Paragraph>
                         <Button

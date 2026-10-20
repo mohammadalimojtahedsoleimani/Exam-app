@@ -1,5 +1,18 @@
 import axios from "axios";
 import { API_SERVER } from "../utils/API_SERVER.js";
+import { isAlreadySubmittedError } from "../utils/trialErrors.js";
+
+export const submitTrialAnswer = async (token, payload) => {
+    try {
+        await axios.post(`${API_SERVER()}probe/results/create/`, payload, {
+            headers: {Authorization: `token ${token}`, 'Content-Type': 'application/json'},
+            timeout: 15000,
+        });
+    } catch (error) {
+        // A refresh may interrupt a successful request before its response arrives.
+        if (!isAlreadySubmittedError(error)) throw error;
+    }
+};
 
 export const getProbePhases = async (token) => {
     try {

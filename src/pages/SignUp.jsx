@@ -1,10 +1,11 @@
 import React from 'react';
 import { ConfigProvider, theme } from 'antd';
 import faIR from 'antd/locale/fa_IR';
-import { BarChartOutlined } from '@ant-design/icons';
+import { ArrowLeftOutlined, BarChartOutlined, ExperimentOutlined } from '@ant-design/icons';
 import { Link } from 'react-router-dom';
 import ProgressiveForm from '../components/ProgressiveForm.jsx';
 import FullscreenButton from '../components/FullscreenButton.jsx';
+import SignUpBackground from '../components/SignUpBackground.jsx';
 import { useFullscreenPromptPause } from '../context/fullscreenContext.js';
 import { usePrefersReducedMotion } from '../hooks/usePrefersReducedMotion.js';
 import mainlogo from '../assets/mainlogo.png';
@@ -17,14 +18,14 @@ import './SignUp.css';
 const buildTheme = (reduceMotion) => ({
     algorithm: theme.darkAlgorithm,
     token: {
-        colorPrimary: '#2dd4bf',
-        colorInfo: '#38bdf8',
+        colorPrimary: '#e4e7ec',
+        colorInfo: '#c5cbd5',
         colorSuccess: '#2dd4bf',
         colorWarning: '#fbbf24',
         colorError: '#fb7185',
-        colorBgBase: '#05070d',
-        colorTextBase: '#f5f7fa',
-        borderRadius: 12,
+        colorBgBase: '#090a0d',
+        colorTextBase: '#f5f5f7',
+        borderRadius: 14,
         controlHeightLG: 48,
         fontFamily: "'Vazirmatn', Tahoma, sans-serif",
         motion: !reduceMotion,
@@ -32,14 +33,14 @@ const buildTheme = (reduceMotion) => ({
     components: {
         Button: { fontWeight: 700, primaryShadow: 'none' },
         Input: {
-            activeBorderColor: '#2dd4bf',
-            activeShadow: '0 0 0 3px rgba(45, 212, 191, 0.12)',
-            hoverBorderColor: 'rgba(148, 163, 184, 0.45)',
+            activeBorderColor: '#d4d8e0',
+            activeShadow: '0 0 0 3px rgba(228, 231, 236, 0.12)',
+            hoverBorderColor: 'rgba(255, 255, 255, 0.35)',
         },
         InputNumber: {
-            activeBorderColor: '#2dd4bf',
-            activeShadow: '0 0 0 3px rgba(45, 212, 191, 0.12)',
-            hoverBorderColor: 'rgba(148, 163, 184, 0.45)',
+            activeBorderColor: '#d4d8e0',
+            activeShadow: '0 0 0 3px rgba(228, 231, 236, 0.12)',
+            hoverBorderColor: 'rgba(255, 255, 255, 0.35)',
         },
         Radio: {
             buttonBg: 'transparent',
@@ -68,7 +69,8 @@ const SignUp = () => {
             componentSize="large"
             theme={reduceMotion ? SIGNUP_THEME_REDUCED : SIGNUP_THEME}
         >
-            <main dir="rtl" className="signup-page">
+            <main dir="rtl" lang="fa" className="signup-page">
+                <SignUpBackground />
                 <div className="signup-shell">
                     <header className="signup-topbar" aria-label="سربرگ سامانه">
                         <div className="signup-brand">
@@ -128,8 +130,35 @@ const SignUp = () => {
                     </header>
 
                     <div className="signup-stage">
+                        <section className="signup-intro" aria-labelledby="signup-title">
+                            <p className="signup-intro__eyebrow">
+                                <ExperimentOutlined aria-hidden="true" />
+                                به سامانه پژوهشی خوش آمدید
+                            </p>
+                            <h1 id="signup-title">
+                                شناخت بیشتر،
+                                <span>با همراهی شما.</span>
+                            </h1>
+                            <p className="signup-intro__description">
+                                هر تجربه، گامی به سوی شناخت است.
+                                <br />
+                                اطلاعات خود را ثبت کنید و وارد راهنمای آزمون شوید.
+                            </p>
+                            <div className="signup-intro__journey" aria-label="مسیر شرکت در پژوهش">
+                                <span className="signup-intro__current">ثبت اطلاعات</span>
+                                <ArrowLeftOutlined aria-hidden="true" />
+                                <span>راهنمای آزمون</span>
+                                <ArrowLeftOutlined aria-hidden="true" />
+                                <span>شروع آزمون</span>
+                            </div>
+                        </section>
                         <ProgressiveForm />
                     </div>
+
+                    <footer className="signup-footer">
+                        <span>دانشگاه خوارزمی <span aria-hidden="true">·</span> بنیاد ملی علم ایران</span>
+                        <span className="signup-footer__detail">سامانه ثبت‌نام و اجرای آزمون</span>
+                    </footer>
                 </div>
             </main>
         </ConfigProvider>

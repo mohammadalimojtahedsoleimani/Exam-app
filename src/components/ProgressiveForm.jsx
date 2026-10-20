@@ -310,8 +310,13 @@ const ProgressiveForm = () => {
     return (
         <div className={`signup-card${isSuccess ? ' signup-card--success' : ''}`}>
             <div className="signup-card__header">
-                <h2 id="registration-form-title">شروع آزمون</h2>
-                <p>برای ساخت جلسه، چهار مورد زیر را تکمیل کنید.</p>
+                <div className="signup-card__heading">
+                    <h2 id="registration-form-title">شروع آزمون</h2>
+                    <p>برای ساخت جلسه، چهار مورد زیر را تکمیل کنید.</p>
+                </div>
+                <span className="signup-card__seal" aria-hidden="true">
+                    <SafetyCertificateOutlined />
+                </span>
             </div>
 
             {registeredToken && !isSuccess && (
@@ -425,6 +430,7 @@ const ProgressiveForm = () => {
                                     <span className="signup-choice__label">
                                         <ManOutlined aria-hidden="true" />
                                         مرد
+                                        <CheckOutlined className="signup-choice__check" aria-hidden="true" />
                                     </span>
                                 ),
                             },
@@ -434,6 +440,7 @@ const ProgressiveForm = () => {
                                     <span className="signup-choice__label">
                                         <WomanOutlined aria-hidden="true" />
                                         زن
+                                        <CheckOutlined className="signup-choice__check" aria-hidden="true" />
                                     </span>
                                 ),
                             },

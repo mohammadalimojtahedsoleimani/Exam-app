@@ -1,60 +1,95 @@
-/* Registration card — flat surfaces only: no backdrop blur, no glow layers and
-   no looping animations, so the first paint stays cheap. */
+﻿/* The translucent card keeps the moving sculpture visible while preserving
+   form contrast. Visual states remain local to registration. */
 .signup-card {
     position: relative;
-    width: min(100%, 30rem);
-    padding: clamp(1.4rem, 3vw, 2.15rem);
-    border: 1px solid rgba(148, 163, 184, 0.14);
-    border-radius: 1.25rem;
-    background: #0a0e16;
-    box-shadow: 0 1.5rem 3.5rem rgba(0, 0, 0, 0.35);
-    transition: border-color 200ms ease;
-    animation: signup-card-in 300ms cubic-bezier(0.22, 1, 0.36, 1) both;
+    isolation: isolate;
+    width: min(100%, 28.5rem);
+    padding: clamp(1.35rem, 2.8vw, 1.9rem);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: 1.8rem;
+    background:
+        radial-gradient(ellipse at 0 0, rgba(255, 255, 255, 0.075), transparent 60%),
+        linear-gradient(145deg, rgba(37, 37, 41, 0.72), rgba(12, 12, 15, 0.8));
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.12),
+        inset 0 -1px 0 rgba(255, 255, 255, 0.025),
+        0 1.5rem 5rem rgba(0, 0, 0, 0.3);
+    -webkit-backdrop-filter: blur(24px);
+    backdrop-filter: blur(24px);
+    transition: border-color 180ms ease;
 }
 
-/* Hairline of accent light along the top edge — the card's only ornament. */
 .signup-card::before {
     position: absolute;
-    top: 0;
-    right: 18%;
-    left: 18%;
+    inset-block-start: -1px;
+    inset-inline: 15%;
     height: 1px;
-    background: linear-gradient(90deg, transparent, rgba(45, 212, 191, 0.45), transparent);
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.55), transparent);
+    pointer-events: none;
     content: '';
 }
 
 .signup-card--success {
-    border-color: rgba(45, 212, 191, 0.32);
+    border-color: rgba(153, 246, 228, 0.38);
+}
+
+.signup-card__header {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    margin-block-end: 1.35rem;
+    padding-block-end: 1.2rem;
+    border-block-end: 1px solid rgba(255, 255, 255, 0.09);
+}
+
+.signup-card__heading {
+    flex: 1;
+    min-width: 0;
 }
 
 .signup-card__header h2 {
     margin: 0;
-    color: #f5f7fa;
-    font-size: 1.45rem;
+    color: #fafafa;
+    font-size: 1.5rem;
     font-weight: 700;
-    letter-spacing: -0.01em;
-    line-height: 1.5;
+    line-height: 1.6;
+    text-wrap: balance;
 }
 
 .signup-card__header p {
-    margin: 0.3rem 0 1.6rem;
-    color: #8b98ad;
-    font-size: 0.8rem;
-    line-height: 1.8;
+    margin: 0.3rem 0 0;
+    color: #b4b4bd;
+    font-size: 0.8125rem;
+    line-height: 1.9;
+    text-wrap: pretty;
+}
+
+.signup-card__seal {
+    display: grid;
+    flex: 0 0 auto;
+    width: 2.8rem;
+    height: 2.8rem;
+    margin-block-start: 0.2rem;
+    place-items: center;
+    border-radius: 0.95rem;
+    background: linear-gradient(140deg, rgba(255, 255, 255, 0.11), rgba(255, 255, 255, 0.025));
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.13), inset 0 1px 0 rgba(255, 255, 255, 0.13);
+    color: #e2e2e7;
+    font-size: 1.3rem;
 }
 
 .signup-retry-note {
     display: flex;
     align-items: center;
     gap: 0.55rem;
-    margin-bottom: 1.1rem;
-    padding: 0.65rem 0.8rem;
-    border: 1px solid rgba(251, 191, 36, 0.2);
-    border-radius: 0.7rem;
-    background: rgba(251, 191, 36, 0.06);
+    margin-block-end: 1.1rem;
+    padding: 0.7rem 0.85rem;
+    border: 1px solid rgba(251, 191, 36, 0.25);
+    border-radius: 0.85rem;
+    background: rgba(251, 191, 36, 0.07);
     color: #fcd9a0;
-    font-size: 0.76rem;
-    line-height: 1.7;
+    font-size: 0.8125rem;
+    line-height: 1.8;
 }
 
 .signup-retry-note .anticon {
@@ -62,21 +97,22 @@
     color: #fbbf24;
 }
 
-/* ---------- Fields ---------- */
-
+/* Fields */
 .signup-form .ant-form-item {
-    margin-bottom: 1rem;
+    margin-block-end: 1.05rem;
 }
 
 .signup-form .ant-form-item-label {
-    padding-bottom: 0.35rem;
+    padding-block-end: 0.4rem;
+    line-height: 1.7;
 }
 
 .signup-form .ant-form-item-label > label {
-    height: auto;
-    color: #aab6c7 !important;
-    font-size: 0.76rem;
-    font-weight: 600;
+    height: auto !important;
+    color: #d2d2d9 !important;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    line-height: 1.7;
 }
 
 .signup-form .ant-form-item-label > label::after {
@@ -93,12 +129,17 @@
 .signup-form .ant-input-number-affix-wrapper,
 .signup-choice.ant-radio-group {
     width: 100%;
-    min-height: 3rem;
-    border: 1px solid rgba(148, 163, 184, 0.2) !important;
-    border-radius: 0.75rem !important;
-    background: rgba(255, 255, 255, 0.022) !important;
-    box-shadow: none !important;
-    transition: border-color 150ms ease, background 150ms ease;
+    min-height: 3.15rem;
+    border: 1px solid rgba(255, 255, 255, 0.13) !important;
+    border-radius: 0.95rem !important;
+    background: rgba(255, 255, 255, 0.04) !important;
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.08) !important;
+    transition: border-color 150ms ease, background-color 150ms ease, box-shadow 150ms ease;
+}
+
+.signup-form .ant-input-affix-wrapper,
+.signup-form .ant-input-number-affix-wrapper {
+    padding-inline: 0.9rem;
 }
 
 .signup-form .ant-input-number-affix-wrapper .ant-input-number {
@@ -109,113 +150,124 @@
 }
 
 .signup-form .ant-input-number-input {
-    height: 2.85rem;
+    height: 3rem;
+    padding-inline: 0;
+    font-variant-numeric: tabular-nums;
 }
 
 .signup-form .ant-input,
 .signup-form .ant-input-number-input {
-    font-size: 0.86rem;
+    background: transparent !important;
+    color: #f5f5f7;
+    font-size: 1rem;
+    line-height: 1.7;
+    caret-color: #fff;
 }
 
 .signup-form .ant-input::placeholder,
 .signup-form .ant-input-number-input::placeholder {
-    color: #616e82 !important;
+    color: #a3a3ae !important;
 }
 
 .signup-form .ant-input-prefix,
 .signup-form .ant-input-number-prefix {
-    margin-inline-end: 0.6rem;
-    color: #64748b;
-    font-size: 0.95rem;
+    margin-inline-end: 0.65rem;
+    color: #a3a3ad;
+    font-size: 1rem;
     transition: color 150ms ease;
 }
 
-.signup-form .ant-input-affix-wrapper:hover,
-.signup-form .ant-input-number-affix-wrapper:hover,
-.signup-choice.ant-radio-group:hover {
-    border-color: rgba(148, 163, 184, 0.38) !important;
+.signup-form .ant-input-affix-wrapper:not(.ant-input-affix-wrapper-disabled):hover,
+.signup-form .ant-input-number-affix-wrapper:not(.ant-input-number-affix-wrapper-disabled):hover,
+.signup-choice.ant-radio-group:not(:has(.ant-radio-button-wrapper-disabled)):hover {
+    border-color: rgba(255, 255, 255, 0.3) !important;
+    background: rgba(255, 255, 255, 0.065) !important;
 }
 
 .signup-form .ant-input-affix-wrapper-focused,
-.signup-form .ant-input-number-affix-wrapper-focused,
-.signup-choice.ant-radio-group:has(.ant-radio-button-input:focus-visible) {
-    border-color: #2dd4bf !important;
-    background: rgba(45, 212, 191, 0.04) !important;
-    box-shadow: 0 0 0 3px rgba(45, 212, 191, 0.11) !important;
+.signup-form .ant-input-number-affix-wrapper-focused {
+    border-color: rgba(255, 255, 255, 0.75) !important;
+    background: rgba(255, 255, 255, 0.07) !important;
+    box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.1) !important;
+}
+
+.signup-form .ant-input-affix-wrapper:has(input:focus-visible),
+.signup-form .ant-input-number-affix-wrapper:has(input:focus-visible) {
+    outline: 2px solid #f4f4f5;
+    outline-offset: 3px;
 }
 
 .signup-form .ant-input-affix-wrapper-focused .ant-input-prefix,
 .signup-form .ant-input-number-affix-wrapper-focused .ant-input-number-prefix {
-    color: #5eead4;
+    color: #f4f4f5;
 }
 
 .signup-form .ant-input-affix-wrapper-disabled,
 .signup-form .ant-input-number-affix-wrapper-disabled {
-    border-color: rgba(148, 163, 184, 0.1) !important;
-    background: rgba(255, 255, 255, 0.012) !important;
-    color: #6b7787 !important;
+    border-color: rgba(255, 255, 255, 0.075) !important;
+    background: rgba(255, 255, 255, 0.02) !important;
+    opacity: 0.65;
 }
 
 .signup-form .ant-form-item-has-error .ant-input-affix-wrapper,
 .signup-form .ant-form-item-has-error .ant-input-number-affix-wrapper,
 .signup-form .ant-form-item-has-error .signup-choice.ant-radio-group {
-    border-color: rgba(251, 113, 133, 0.6) !important;
+    border-color: rgba(251, 113, 133, 0.8) !important;
 }
 
 .signup-form .ant-form-item-explain-error {
-    margin-top: 0.3rem;
+    margin-block-start: 0.35rem;
     color: #fda4af;
-    font-size: 0.73rem;
-    line-height: 1.65;
+    font-size: 0.8125rem;
+    line-height: 1.8;
 }
 
-/* Gender choice — a radio group styled as a segmented control. Unlike antd's
-   Segmented it has no implicit first-option selection, so the "nothing chosen
-   yet" state stays honest. */
+/* Native radio inputs retain the unselected state and keyboard interactions. */
 .signup-choice.ant-radio-group {
     display: flex;
     align-items: stretch;
-    gap: 0.3rem;
-    padding: 0.28rem;
+    gap: 0.35rem;
+    padding: 0.3rem;
 }
 
 .signup-choice .ant-radio-button-wrapper {
     display: flex;
     flex: 1 1 0;
     min-width: 0;
+    min-height: 2.45rem;
     height: auto;
     align-items: center;
     justify-content: center;
     padding-inline: 0.5rem;
     border: 0 !important;
-    border-radius: 0.55rem !important;
+    border-radius: 0.65rem !important;
     background: transparent !important;
     box-shadow: none !important;
-    color: #8b98ad !important;
-    font-size: 0.84rem;
-    font-weight: 600;
-    line-height: 1;
-    transition: color 150ms ease, background 150ms ease;
+    color: #b6b6c0 !important;
+    font-size: 0.875rem;
+    font-weight: 500;
+    line-height: 1.7;
+    transition: color 150ms ease, background-color 150ms ease, box-shadow 150ms ease;
 }
 
-/* antd draws a 1px divider between adjacent buttons; the gap replaces it. */
 .signup-choice .ant-radio-button-wrapper::before {
     display: none !important;
 }
 
 .signup-choice .ant-radio-button-wrapper:not(.ant-radio-button-wrapper-checked):not(.ant-radio-button-wrapper-disabled):hover {
-    background: rgba(148, 163, 184, 0.07) !important;
-    color: #dbe3ee !important;
+    background: rgba(255, 255, 255, 0.055) !important;
+    color: #f4f4f5 !important;
 }
 
 .signup-choice .ant-radio-button-wrapper-checked {
-    background: rgba(45, 212, 191, 0.12) !important;
-    color: #99f6e4 !important;
+    background: rgba(255, 255, 255, 0.14) !important;
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.15), 0 2px 6px rgba(0, 0, 0, 0.08) !important;
+    color: #fff !important;
 }
 
 .signup-choice .ant-radio-button-wrapper:has(.ant-radio-button-input:focus-visible) {
-    outline: 2px solid rgba(94, 234, 212, 0.5);
-    outline-offset: -2px;
+    outline: 2px solid #f4f4f5;
+    outline-offset: 2px;
 }
 
 .signup-choice__label {
@@ -225,66 +277,78 @@
 }
 
 .signup-choice__label .anticon {
-    font-size: 0.92rem;
-    opacity: 0.75;
+    font-size: 1rem;
+}
+
+.signup-choice__label .signup-choice__check {
+    width: 0;
+    margin-inline-start: -0.45rem;
+    opacity: 0;
+    font-size: 0.75rem;
+}
+
+.signup-choice .ant-radio-button-wrapper-checked .signup-choice__check {
+    width: 0.75rem;
+    margin-inline-start: 0.15rem;
+    opacity: 1;
 }
 
 .signup-choice.ant-radio-group:has(.ant-radio-button-wrapper-disabled) {
     opacity: 0.6;
 }
 
-/* ---------- Submit ---------- */
-
+/* Submit */
 .signup-submit-item {
-    margin: 1.35rem 0 0 !important;
+    margin: 1.4rem 0 0 !important;
 }
 
 .signup-submit-button.ant-btn {
-    min-height: 3rem;
+    min-height: 3.2rem;
+    gap: 0.65rem;
     border: 0 !important;
-    border-radius: 0.75rem !important;
-    background: #2dd4bf !important;
-    box-shadow: none !important;
-    color: #04201c;
-    font-size: 0.9rem;
+    border-radius: 0.95rem !important;
+    background: linear-gradient(180deg, #fff, #e6e6e9) !important;
+    box-shadow: inset 0 1px 0 #fff, 0 3px 16px rgba(255, 255, 255, 0.1) !important;
+    color: #17171b !important;
+    font-size: 0.9375rem;
     font-weight: 700;
-    transition: background 150ms ease, opacity 150ms ease !important;
+    transition: box-shadow 150ms ease, opacity 150ms ease, scale 150ms ease !important;
 }
 
 .signup-submit-button.ant-btn:not(:disabled):hover {
-    background: #5eead4 !important;
-}
-
-.signup-submit-button.ant-btn:not(:disabled):active {
-    background: #14b8a6 !important;
+    box-shadow: inset 0 1px 0 #fff, 0 5px 24px rgba(255, 255, 255, 0.22) !important;
 }
 
 .signup-submit-button.ant-btn:focus-visible {
-    outline: 2px solid rgba(94, 234, 212, 0.6);
-    outline-offset: 3px;
+    outline: 2px solid #fff;
+    outline-offset: 4px;
 }
 
 .signup-submit-button.ant-btn:disabled {
-    background: #2dd4bf !important;
-    color: #04201c !important;
-    opacity: 0.55;
+    opacity: 0.6;
     cursor: wait;
 }
 
 .signup-privacy-note {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     justify-content: center;
-    gap: 0.45rem;
-    margin: 1.15rem 0 0;
-    color: #6b7787;
-    font-size: 0.72rem;
-    line-height: 1.7;
+    gap: 0.4rem;
+    margin: 1.1rem 0 0;
+    color: #a3a3af;
+    font-size: 0.75rem;
+    line-height: 1.9;
     text-align: center;
+    text-wrap: pretty;
 }
 
-/* ---------- Success overlay ---------- */
+.signup-privacy-note .anticon {
+    flex: 0 0 auto;
+    margin-block-start: 0.3rem;
+    font-size: 0.8rem;
+}
 
+/* Success overlay */
 .signup-card__success {
     position: absolute;
     z-index: 3;
@@ -292,41 +356,45 @@
     inset: 0;
     align-content: center;
     justify-items: center;
-    gap: 0.35rem;
+    gap: 0.55rem;
     padding: 1.5rem;
     border-radius: inherit;
-    background: #0a0e16;
+    background:
+        radial-gradient(ellipse at 50% 35%, rgba(94, 234, 212, 0.06), transparent 60%),
+        rgba(15, 15, 18, 0.85);
+    -webkit-backdrop-filter: blur(20px);
+    backdrop-filter: blur(20px);
     text-align: center;
-    animation: signup-fade-in 220ms ease both;
 }
 
 .signup-card__success strong {
     color: #f0fdfa;
-    font-size: 1.05rem;
+    font-size: 1.15rem;
     font-weight: 700;
+    line-height: 1.8;
 }
 
 .signup-card__success > span:last-child {
-    color: #8b98ad;
-    font-size: 0.8rem;
-    line-height: 1.7;
+    color: #b6b6c0;
+    font-size: 0.875rem;
+    line-height: 1.9;
 }
 
 .signup-card__success-ring {
     display: grid;
-    width: 3.5rem;
-    height: 3.5rem;
-    margin-bottom: 0.75rem;
+    width: 4.5rem;
+    height: 4.5rem;
+    margin-block-end: 0.9rem;
     place-items: center;
-    border: 1px solid rgba(45, 212, 191, 0.35);
-    border-radius: 999px;
-    background: rgba(45, 212, 191, 0.1);
-    color: #5eead4;
-    font-size: 1.4rem;
+    border: 1px solid rgba(153, 246, 228, 0.3);
+    border-radius: 50%;
+    background: linear-gradient(145deg, rgba(153, 246, 228, 0.14), rgba(153, 246, 228, 0.025));
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 0 0 0.6rem rgba(153, 246, 228, 0.025);
+    color: #99f6e4;
+    font-size: 1.6rem;
 }
 
-/* ---------- Toast content ---------- */
-
+/* Toast content */
 .signup-toast-content {
     display: flex;
     width: 100%;
@@ -341,9 +409,9 @@
     width: 2rem;
     height: 2rem;
     place-items: center;
-    border-radius: 0.6rem;
-    background: rgba(56, 189, 248, 0.12);
-    color: #7dd3fc;
+    border-radius: 0.65rem;
+    background: rgba(255, 255, 255, 0.1);
+    color: #e4e4e7;
     font-size: 1rem;
 }
 
@@ -369,16 +437,16 @@
 }
 
 .signup-toast-content__copy strong {
-    color: #f8fafc;
-    font-size: 0.86rem;
+    color: #fafafa;
+    font-size: 0.875rem;
     font-weight: 700;
-    line-height: 1.55;
+    line-height: 1.7;
 }
 
 .signup-toast-content__copy > span {
-    color: #b9c4d3;
-    font-size: 0.8rem;
-    line-height: 1.75;
+    color: #c4c4cc;
+    font-size: 0.8125rem;
+    line-height: 1.8;
 }
 
 .app-toast__progress--success {
@@ -405,72 +473,71 @@
     }
 }
 
-@keyframes signup-fade-in {
-    from {
-        opacity: 0;
+@media (prefers-reduced-motion: no-preference) {
+    .signup-card__success {
+        animation: signup-success-in 220ms ease both;
     }
-    to {
-        opacity: 1;
-    }
-}
 
-@keyframes signup-card-in {
-    from {
-        opacity: 0;
-        transform: translateY(0.5rem);
+    .signup-submit-button.ant-btn:not(:disabled):active {
+        scale: 0.96;
     }
-    to {
-        opacity: 1;
-        transform: none;
+
+    @keyframes signup-success-in {
+        from {
+            opacity: 0;
+        }
+        to {
+            opacity: 1;
+        }
     }
 }
 
 @media (max-width: 32rem) {
     .signup-card {
         padding: 1.35rem 1.15rem;
+        border-radius: 1.5rem;
+    }
+
+    .signup-card__header {
+        gap: 0.65rem;
     }
 
     .signup-card__header h2 {
-        font-size: 1.3rem;
+        font-size: 1.35rem;
     }
 
+    .signup-card__seal {
+        width: 2.5rem;
+        height: 2.5rem;
+        border-radius: 0.85rem;
+    }
+}
+
+@media (max-width: 22rem) {
     .signup-fields-row {
-        grid-template-columns: 1fr;
+        grid-template-columns: minmax(0, 1fr);
         gap: 0;
     }
 }
 
-/* Short viewports: tighten the vertical rhythm so the card still fits on one
-   screen without the page scrolling. */
-@media (max-height: 46rem) {
+/* Ant Design's large-control label line box otherwise adds an input's worth
+   of empty space. Keep labels close to their fields, including short screens. */
+@media (max-height: 48rem), (max-width: 55rem) {
     .signup-card {
         padding-block: 1.35rem;
     }
 
-    .signup-card__header p {
-        margin-bottom: 1.15rem;
+    .signup-card__header {
+        margin-block-end: 1rem;
+        padding-block-end: 0.85rem;
     }
 
     .signup-form .ant-form-item {
-        margin-bottom: 0.75rem;
-    }
-
-    .signup-form .ant-input-affix-wrapper,
-    .signup-form .ant-input-number-affix-wrapper,
-    .signup-choice.ant-radio-group {
-        min-height: 2.7rem;
-    }
-
-    .signup-form .ant-input-number-input {
-        height: 2.55rem;
+        margin-block-end: 0.8rem;
     }
 
     .signup-submit-item {
-        margin-top: 1.05rem !important;
-    }
-
-    .signup-submit-button.ant-btn {
-        min-height: 2.8rem;
+        margin-block-start: 1rem !important;
     }
 }
 
@@ -479,10 +546,41 @@
     .signup-card__success,
     .signup-form .ant-input-affix-wrapper,
     .signup-form .ant-input-number-affix-wrapper,
+    .signup-form .ant-input-prefix,
+    .signup-form .ant-input-number-prefix,
     .signup-choice.ant-radio-group,
     .signup-choice .ant-radio-button-wrapper,
-    .signup-submit-button.ant-btn {
+    .signup-submit-button.ant-btn,
+    .signup-toast-content .anticon-spin,
+    .signup-toast-content .anticon-spin::before {
         animation: none !important;
         transition: none !important;
+    }
+}
+
+@media (forced-colors: active) {
+    .signup-card,
+    .signup-card__success {
+        border: 1px solid CanvasText;
+        background: Canvas;
+    }
+
+    .signup-form .ant-input-affix-wrapper,
+    .signup-form .ant-input-number-affix-wrapper,
+    .signup-choice.ant-radio-group,
+    .signup-submit-button.ant-btn {
+        border: 1px solid ButtonText !important;
+    }
+
+    .signup-choice .ant-radio-button-wrapper-checked {
+        outline: 1px solid Highlight;
+        outline-offset: -1px;
+    }
+
+    .signup-form .ant-input-affix-wrapper:has(input:focus-visible),
+    .signup-form .ant-input-number-affix-wrapper:has(input:focus-visible),
+    .signup-choice .ant-radio-button-wrapper:has(.ant-radio-button-input:focus-visible),
+    .signup-submit-button.ant-btn:focus-visible {
+        outline-color: Highlight;
     }
 }

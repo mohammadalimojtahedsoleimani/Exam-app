@@ -70,6 +70,8 @@ export const getTrialCompletionTransition = (phase) => {
     return transition;
 };
 
+export const TRIAL_PROGRESS_STORAGE_KEY = 'probeTrialProgress';
+
 export const PROBE_STORAGE_KEYS = Object.freeze([
     'authToken',
     'currentState',
@@ -80,4 +82,5 @@ export const PROBE_STORAGE_KEYS = Object.freeze([
     'currentPhaseName',
     'currentPhaseHasVideo',
     'currentPhaseVideoSeen',
+    TRIAL_PROGRESS_STORAGE_KEY,
 ]);
