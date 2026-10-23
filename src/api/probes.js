@@ -1,6 +1,7 @@
 import axios from "axios";
 import { API_SERVER } from "../utils/API_SERVER.js";
 import { isAlreadySubmittedError } from "../utils/trialErrors.js";
+import {checkpointParticipantRecovery, commitParticipantFlow} from "../utils/participantRecovery.js";
 
 export const submitTrialAnswer = async (token, payload) => {
     try {
@@ -87,9 +88,13 @@ export const setVideoSeen = async (token, session_videoId) => {
     }
 };
 
-export const findValidSession = async (token) => {
+export const findValidSession = async (token, flow = {}) => {
     if (!token) {
         throw new Error('An authentication token is required to create a probe session.');
+    }
+    checkpointParticipantRecovery(localStorage);
+    if (localStorage.getItem('authToken') !== token) {
+        throw new Error('The participant session is no longer active.');
     }
 
     const phasesRes = await getProbePhases(token);
@@ -108,22 +113,38 @@ export const findValidSession = async (token) => {
         throw new Error('The API returned more than one active probe phase.');
     }
 
+    if (localStorage.getItem('authToken') !== token) {
+        throw new Error('The participant session changed while loading phases.');
+    }
     const sessionRes = await createProbeSession(token, activePhase.id);
+    checkpointParticipantRecovery(localStorage);
+    if (localStorage.getItem('authToken') !== token) {
+        throw new Error('The participant session changed while preparing the exam.');
+    }
+    const sessionId = sessionRes.data?.session_id;
+    if (!((typeof sessionId === 'string' && sessionId.trim())
+        || (typeof sessionId === 'number' && Number.isFinite(sessionId)))) {
+        throw new Error('The API did not return a valid probe session ID.');
+    }
     const session = {
         phaseId: activePhase.id,
         phaseName: activePhase.name,
         hasVideo: Boolean(activePhase.has_video),
         videoSeen: Boolean(activePhase.video_seen),
-        sessionId: sessionRes.data.session_id,
+        sessionId,
         clusterCount: sessionRes.data.cluster_count,
     };
 
-    localStorage.setItem('currentPhaseID', String(session.phaseId));
-    localStorage.setItem('currentSessionID', String(session.sessionId));
-    localStorage.setItem('currentClusterLength', String(session.clusterCount));
-    localStorage.setItem('currentPhaseName', session.phaseName ?? '');
-    localStorage.setItem('currentPhaseHasVideo', String(session.hasVideo));
-    localStorage.setItem('currentPhaseVideoSeen', String(session.videoSeen));
+    commitParticipantFlow(localStorage, {
+        currentPhaseID: String(session.phaseId),
+        currentSessionID: String(session.sessionId),
+        currentClusterLength: String(session.clusterCount),
+        currentPhaseName: session.phaseName ?? '',
+        currentPhaseHasVideo: String(session.hasVideo),
+        currentPhaseVideoSeen: String(session.videoSeen),
+        ...(flow.phase !== undefined ? {currentPhase: String(flow.phase)} : {}),
+        ...(flow.state !== undefined ? {currentState: flow.state} : {}),
+    });
 
     return session;
 }

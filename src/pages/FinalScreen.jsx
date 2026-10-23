@@ -10,6 +10,7 @@ import FullscreenButton from '../components/FullscreenButton.jsx';
 import { useFullscreen, useFullscreenPromptPause } from '../context/fullscreenContext.js';
 import { useLockedViewport } from '../hooks/useLockedViewport.js';
 import { APP_ROUTE, PROBE_STORAGE_KEYS } from '../utils/phaseFlow.js';
+import {forgetParticipantRecovery} from '../utils/participantRecovery.js';
 import './FinalScreen.css';
 
 const FinalScreen = () => {
@@ -23,6 +24,7 @@ const FinalScreen = () => {
     useFullscreenPromptPause();
 
     const handleFinish = () => {
+        forgetParticipantRecovery(localStorage);
         PROBE_STORAGE_KEYS.forEach((key) => localStorage.removeItem(key));
         // The session is over: stop asking the participant to restore fullscreen.
         releaseFullscreenIntent();

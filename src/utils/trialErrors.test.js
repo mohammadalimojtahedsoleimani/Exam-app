@@ -22,6 +22,7 @@ test('recognizes common duplicate-answer wording and response shapes', () => {
         {detail: 'Already submitted for this cluster.'},
         {details: ['Already submitted.']},
         {details: 'ANSWER_ALREADY_SUBMITTED'},
+        {detail: 'For this cluster answer already submitted.'},
         {detail: 'The result has already been recorded for this cluster.'},
         {details: 'پاسخ این خوشه قبلاً ثبت شده است.'},
         {detail: 'پاسخ این کلاستر پیش‌تر ارسال شده است.'},
@@ -43,9 +44,19 @@ test('does not skip clusters on unrelated, ambiguous, or malformed failures', ()
         apiError(400, {details: 'The answer could not be submitted.'}),
         apiError(400, {details: 'The answer has not already been submitted.'}),
         apiError(400, {details: 'The answer was never submitted already.'}),
+        apiError(400, {details: 'No answer has already been submitted for this cluster.'}),
+        apiError(400, {details: "There isn't already an answer submitted for this cluster."}),
+        apiError(400, {details: 'There isn’t already an answer submitted for this cluster.'}),
+        apiError(400, {details: 'The answer cannot already have been submitted.'}),
+        apiError(400, {details: 'The answer has not yet been successfully submitted already.'}),
+        apiError(400, {details: 'The answer does not already exist for this cluster.'}),
+        apiError(400, {details: 'This is not a duplicate answer for this cluster.'}),
+        apiError(400, {details: 'No duplicate answer was found for this cluster.'}),
         apiError(400, {details: 'The username already exists.'}),
         apiError(400, {details: 'The session has already expired.'}),
         apiError(400, {details: 'پاسخ این خوشه قبلاً ثبت نشده است.'}),
+        apiError(400, {details: 'پاسخ این خوشه قبلاً ثبت نگردیده است.'}),
+        apiError(400, {details: 'پاسخ این خوشه از قبل وجود ندارد.'}),
         apiError(401, {detail: 'Invalid token.'}),
         apiError(403, {detail: 'You do not have permission.'}),
         apiError(429, {detail: 'Too many requests.'}),
@@ -93,6 +104,11 @@ test('uses the operation-specific fallback for unexpected errors', () => {
     }
 });
 
+test('expired participant recovery explains its deadline and the next signup step', () => {
+    assert.equal(getTrialErrorMessage({code: 'PARTICIPANT_RECOVERY_EXPIRED'}, 'Fallback'),
+        'مهلت ۱۲ ساعته بازیابی آزمون پایان یافته است. لطفاً برای شروع دوباره به صفحه ثبت‌نام برگردید.');
+});
+
 test('only explicit 4xx detail/details confirmations recover an interrupted phase completion', () => {
     assert.equal(isAlreadyCompletedError(apiError(409, {details: 'This session has already been completed.'})), true);
     assert.equal(isAlreadyCompletedError(apiError(400, {detail: 'این مرحله قبلاً تکمیل شده است.'})), true);
@@ -100,6 +116,8 @@ test('only explicit 4xx detail/details confirmations recover an interrupted phas
         apiError(500, {detail: 'This session has already been completed.'}),
         apiError(409, {message: 'This session has already been completed.'}),
         apiError(400, {detail: 'This session has not already been completed.'}),
+        apiError(400, {details: "This session hasn't already been completed."}),
+        apiError(400, {detail: 'این مرحله قبلاً پایان نیافته است.'}),
         apiError(400, {detail: 'Already submitted for this cluster.'}),
         apiError(401, {detail: 'Invalid token.'}),
     ]) assert.equal(isAlreadyCompletedError(error), false);

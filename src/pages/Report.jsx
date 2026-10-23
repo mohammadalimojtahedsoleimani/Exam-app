@@ -28,6 +28,9 @@ import {
     formatPersianPercentValue,
 } from '../utils/persianNumbers.js';
 import { APP_ROUTE, PHASE } from '../utils/phaseFlow.js';
+import { ACTIVE_PARTICIPANT_STORAGE_KEY, checkpointParticipantRecovery } from '../utils/participantRecovery.js';
+import { isAlreadyCompletedError } from '../utils/trialErrors.js';
+import { normalizePracticeMark, readPracticeResult, writePracticeResult } from '../utils/practiceResult.js';
 import './Report.css';
 
 const GLOBAL_TOAST_CONTAINER_ID = 'app-global';
@@ -122,6 +125,12 @@ const Report = () => {
         setLoadError('');
 
         try {
+            const activeParticipant = localStorage.getItem(ACTIVE_PARTICIPANT_STORAGE_KEY);
+            const recovered = checkpointParticipantRecovery(localStorage);
+            if (activeParticipant && !recovered) {
+                navigate(APP_ROUTE.SIGN_UP, {replace: true});
+                return;
+            }
             const userToken = localStorage.getItem('authToken');
             const sessionId = localStorage.getItem('currentSessionID');
 
@@ -130,8 +139,25 @@ const Report = () => {
             }
 
             setToken(userToken);
-            const response = await setPhaseComplete(userToken, sessionId);
-            setRecord(response?.data?.mark || 0);
+            const scope = {token: userToken, sessionId, expiresAt: recovered?.expiresAt};
+            let mark = readPracticeResult(localStorage, scope);
+            if (mark === null) {
+                let response;
+                try {
+                    response = await setPhaseComplete(userToken, sessionId);
+                } catch (error) {
+                    // A lost completion response is recoverable only when the
+                    // duplicate response includes the actual backend mark.
+                    if (!isAlreadyCompletedError(error)
+                        || normalizePracticeMark(error.response?.data?.mark) === null) throw error;
+                    response = error.response;
+                }
+                if (localStorage.getItem('authToken') !== userToken
+                    || localStorage.getItem('currentSessionID') !== sessionId) return;
+                mark = writePracticeResult(localStorage, scope, response?.data?.mark);
+            }
+            checkpointParticipantRecovery(localStorage);
+            setRecord(mark);
         } catch (error) {
             console.error('Failed to fetch result:', error);
             const message = 'دریافت نتیجه آزمون انجام نشد. لطفاً دوباره تلاش کنید.';
@@ -146,7 +172,7 @@ const Report = () => {
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [navigate]);
 
     useEffect(() => {
         if (hasFetched.current) return;
@@ -209,13 +235,10 @@ const Report = () => {
         setTransitionError('');
 
         try {
-            await findValidSession(token);
-
-            if (isPassed) {
-                localStorage.setItem('currentPhase', String(PHASE.BASELINE));
-            }
-
-            localStorage.setItem('currentState', 'Exam');
+            await findValidSession(token, {
+                phase: isPassed ? PHASE.BASELINE : PHASE.PRACTICE,
+                state: 'Exam',
+            });
             navigate(APP_ROUTE.TRIAL, { replace: true });
         } catch (error) {
             console.error('Failed to prepare the next session', error);

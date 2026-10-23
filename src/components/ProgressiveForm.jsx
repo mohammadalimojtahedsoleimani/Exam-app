@@ -25,6 +25,12 @@ import { API_SERVER } from '../utils/API_SERVER.js';
 import { findValidSession } from '../api/probes.js';
 import { usePrefersReducedMotion } from '../hooks/usePrefersReducedMotion.js';
 import { APP_ROUTE, PHASE } from '../utils/phaseFlow.js';
+import {
+    readParticipantRecovery,
+    activateParticipantRecovery,
+    beginParticipantRecovery,
+    getParticipantRecoveryRoute,
+} from '../utils/participantRecovery.js';
 import './ProgressiveForm.css';
 
 const GLOBAL_TOAST_CONTAINER_ID = 'app-global';
@@ -177,10 +183,9 @@ const ProgressiveForm = () => {
     const isSuccess = submissionStage === 'success';
 
     const startParticipantSession = async (token) => {
-        await findValidSession(token);
-        localStorage.setItem('currentState', 'instructions');
-        localStorage.setItem('currentPhase', String(PHASE.PRACTICE));
+        await findValidSession(token, {phase: PHASE.PRACTICE, state: 'instructions'});
         form.resetFields();
+        return APP_ROUTE.INSTRUCTIONS;
     };
 
     const onFinish = async (values) => {
@@ -199,6 +204,17 @@ const ProgressiveForm = () => {
         );
 
         try {
+            let recovery = readParticipantRecovery(localStorage, values);
+            if (recovery) {
+                recovery = activateParticipantRecovery(localStorage, recovery);
+                token = recovery?.token ?? '';
+            } else {
+                // The cached registration token is also subject to the recovery
+                // deadline. Never reuse it for a different or expired profile.
+                token = '';
+                setRegisteredToken('');
+            }
+
             if (!token) {
                 setSubmissionStage('registering');
                 const registerUrl = `${API_SERVER()}user/participant/register/`;
@@ -214,28 +230,30 @@ const ProgressiveForm = () => {
                     throw tokenError;
                 }
 
-                setRegisteredToken(token);
-                dispatch(setCredentials({ token }));
-                localStorage.setItem('authToken', token);
+                beginParticipantRecovery(localStorage, values, token);
             }
 
+            setRegisteredToken(token);
+            dispatch(setCredentials({ token }));
             setSubmissionStage('preparing');
-            await startParticipantSession(token);
+            const route = getParticipantRecoveryRoute(recovery) ?? await startParticipantSession(token);
             succeeded = true;
             setSubmissionStage('success');
             updateSignupToast(
                 toastId,
                 'success',
                 'جلسه آزمون آماده است',
-                'در حال انتقال به راهنمای آزمون هستید.',
+                route === APP_ROUTE.INSTRUCTIONS
+                    ? 'در حال انتقال به راهنمای آزمون هستید.'
+                    : 'در حال انتقال به ادامه آزمون هستید.',
                 reduceMotion,
             );
 
             if (reduceMotion) {
-                navigate(APP_ROUTE.INSTRUCTIONS, { replace: true });
+                navigate(route, { replace: true });
             } else {
                 redirectTimerRef.current = setTimeout(() => {
-                    navigate(APP_ROUTE.INSTRUCTIONS, { replace: true });
+                    navigate(route, { replace: true });
                 }, SUCCESS_REDIRECT_DELAY);
             }
         } catch (error) {

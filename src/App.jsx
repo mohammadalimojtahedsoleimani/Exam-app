@@ -1,4 +1,10 @@
 import AppRoutes from './routes';
+import {useCallback} from 'react';
+import {useNavigate} from 'react-router-dom';
+import {useDispatch} from 'react-redux';
+import {logout} from './redux/authSlice.js';
+import {APP_ROUTE} from './utils/phaseFlow.js';
+import {useParticipantRecoveryExpiry} from './hooks/useParticipantRecoveryExpiry.js';
 import { CloseOutlined } from '@ant-design/icons';
 import { ToastContainer } from 'react-toastify';
 import FullscreenProvider from './context/FullscreenProvider.jsx';
@@ -22,6 +28,14 @@ const ToastCloseButton = ({ closeToast }) => (
 );
 
 function App() {
+  const navigate = useNavigate();
+  const dispatch = useDispatch();
+  const handleRecoveryExpiry = useCallback(() => {
+    dispatch(logout());
+    navigate(APP_ROUTE.SIGN_UP, {replace: true});
+  }, [dispatch, navigate]);
+  useParticipantRecoveryExpiry(handleRecoveryExpiry);
+
   return (
     <FullscreenProvider>
       <ToastContainer

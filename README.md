@@ -114,6 +114,10 @@ Before sending an answer, its complete payload is saved in a browser checkpoint.
 
 A 4xx response whose `detail` or `details` confirms that this cluster's answer was already submitted advances through the normal next-cluster sequence. On the final cluster, it completes the phase. Other failures keep the response available for retry.
 
+Participant recovery lasts for 12 hours from the initial registration and uses the same browser and origin. Entering the same participant ID, age, gender, and group restores the original token, session, phase, video-seen state, and trial checkpoint. Each profile has a separate backup, so another participant can use the browser without replacing it. The deadline does not extend when answers are saved or the participant signs in again. Expired backups are removed while the app is running or on the next launch/access after the browser has been closed; finishing the experiment removes the active participant's backup. Phase and session changes are journaled before updating browser storage, so an interruption midway through an update is repaired before resuming.
+
+Both acknowledged and pending answer payloads are retained during that window. Recovery resends only the pending payload, preserving its exact `cluster_id`, `answer`, and `response_time`; acknowledged clusters are skipped. The practice report also caches the backend's actual score by participant token and session. If a session-creation response is lost, the backend must reuse the active session on retry. If a practice-completion response is lost before its score is saved, the backend must return the score with the duplicate-completion response to recover that result.
+
 Only when response data cannot be recovered does submission use `LEFT` for a missing/invalid answer or `0` milliseconds for a missing/invalid reaction time. Each field is recovered independently, so valid participant data is preserved. Fallback use is logged in the browser console. These defaults are configured in `src/utils/trialSubmission.js`; a default answer is a placeholder, not an observed participant response. Retrying never includes time spent waiting to retry in the reaction time.
 
 > [!NOTE]
@@ -495,10 +499,11 @@ Before committing a change, run:
 
 ```bash
 npm run lint
+npm test
 npm run build
 ```
 
-The repository currently has no automated unit, integration, or end-to-end test script. Adding tests for phase transitions, timing behavior, API failures, and route recovery is recommended.
+`npm test` runs the native Node test suite, including participant isolation and expiry, interrupted answer replay, duplicate API errors, practice score caching, and narration. Browser-level timing and end-to-end checks still require the study's target browsers and hardware.
 
 ## Operational and research notes
 

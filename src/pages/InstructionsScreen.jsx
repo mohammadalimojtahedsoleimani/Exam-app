@@ -21,6 +21,9 @@ import { findValidSession } from "../api/probes.js";
 import { useLockedViewport } from "../hooks/useLockedViewport.js";
 import { createInstructionNarration, INITIAL_NARRATION_STATE } from "../utils/instructionNarration.js";
 import {
+  ACTIVE_PARTICIPANT_STORAGE_KEY, checkpointParticipantRecovery, commitParticipantFlow,
+} from "../utils/participantRecovery.js";
+import {
   APP_ROUTE,
   parsePhase,
   phaseHasInstructions,
@@ -209,6 +212,11 @@ const InstructionsScreen = () => {
   }, [activeInstructions, totalTimeUnits]);
 
   useEffect(() => {
+    const hasRecovery = localStorage.getItem(ACTIVE_PARTICIPANT_STORAGE_KEY);
+    if (hasRecovery && !checkpointParticipantRecovery(localStorage)) {
+      navigate(APP_ROUTE.SIGN_UP, { replace: true });
+      return;
+    }
     if (currentPhase === null) {
       navigate(APP_ROUTE.SIGN_UP, { replace: true });
     } else if (!phaseHasInstructions(currentPhase)) {
@@ -266,6 +274,11 @@ const InstructionsScreen = () => {
 
     setIsLoading(true);
     try {
+      const hasRecovery = localStorage.getItem(ACTIVE_PARTICIPANT_STORAGE_KEY);
+      if (hasRecovery && !checkpointParticipantRecovery(localStorage)) {
+        navigate(APP_ROUTE.SIGN_UP, { replace: true });
+        return;
+      }
       const token = localStorage.getItem('authToken');
 
       if (!token || !phaseHasInstructions(currentPhase)) {
@@ -273,12 +286,16 @@ const InstructionsScreen = () => {
       }
 
       if (phaseUsesMoodInstructions(currentPhase)) {
-        await findValidSession(token);
+        // An interrupted click may have already prepared this phase's session.
+        // Reuse it instead of creating a new session on recovery.
+        if (localStorage.getItem('currentState') !== 'Exam') {
+          await findValidSession(token, {phase: currentPhase, state: 'Exam'});
+        }
       } else if (!localStorage.getItem('currentSessionID')) {
         throw new Error('The phase 1 session is missing.');
       }
 
-      localStorage.setItem('currentState', 'Exam');
+      commitParticipantFlow(localStorage, {currentState: 'Exam'});
       navigate(APP_ROUTE.TRIAL, { replace: true });
     } catch (error) {
       console.error(error);

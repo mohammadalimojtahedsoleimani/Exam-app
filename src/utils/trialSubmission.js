@@ -46,7 +46,7 @@ export const createTrialSubmission = ({
         payload: {
             cluster_id: clusterId,
             answer: resolvedAnswer ?? DEFAULT_TRIAL_ANSWER,
-            response_time: Math.round(resolvedResponseTime ?? DEFAULT_TRIAL_RESPONSE_TIME),
+            response_time: savedResponseTime ?? Math.round(resolvedResponseTime ?? DEFAULT_TRIAL_RESPONSE_TIME),
         },
         usedDefaultAnswer: resolvedAnswer === null,
         usedDefaultResponseTime: resolvedResponseTime === null,

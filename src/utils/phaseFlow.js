@@ -82,5 +82,8 @@ export const PROBE_STORAGE_KEYS = Object.freeze([
     'currentPhaseName',
     'currentPhaseHasVideo',
     'currentPhaseVideoSeen',
+    'activeProbeParticipant',
+    'probePendingFlowUpdate',
+    'probePracticeResult',
     TRIAL_PROGRESS_STORAGE_KEY,
 ]);

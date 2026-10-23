@@ -3,8 +3,12 @@ import test from 'node:test';
 import {
     readTrialProgress, writeTrialProgress, restoreTrialProgress, stageTrialSubmission,
     confirmTrialSubmission, isTrialProgressComplete,
+    TRIAL_PROGRESS_TTL,
 } from './trialProgress.js';
 import {PROBE_STORAGE_KEYS, TRIAL_PROGRESS_STORAGE_KEY} from './phaseFlow.js';
+import {
+    ACTIVE_PARTICIPANT_STORAGE_KEY, beginParticipantRecovery, pruneParticipantRecovery,
+} from './participantRecovery.js';
 
 class MemoryStorage {
     values = new Map();
@@ -137,4 +141,47 @@ test('finishing an exam clears checkpoints without deleting unrelated storage', 
     PROBE_STORAGE_KEYS.forEach(key => storage.removeItem(key));
     assert.equal(storage.getItem(TRIAL_PROGRESS_STORAGE_KEY), null);
     assert.equal(storage.getItem('unrelated-setting'), 'keep');
+});
+
+test('acknowledged answers and exact times survive subsequent checkpoints and restoration', () => {
+    const storage = new MemoryStorage();
+    const original = {...payload, response_time: 412.75};
+    const accepted = confirmTrialSubmission(stageTrialSubmission(initial(), original));
+    const restored = restoreTrialProgress(accepted, [clusters[2], clusters[1], clusters[0]]);
+    const second = {cluster_id: 102, answer: 'LEFT', response_time: 0};
+    writeTrialProgress(storage, scope, stageTrialSubmission(restored.progress, second));
+    const reloaded = readTrialProgress(storage, scope);
+    assert.deepEqual(reloaded.confirmedSubmissions, [original]);
+    assert.deepEqual(reloaded.pendingSubmission, second);
+    assert.equal(reloaded.nextIndex, 1);
+});
+
+test('checkpoints expire after twelve hours without extending the original deadline', () => {
+    const storage = new MemoryStorage();
+    const now = 1000;
+    writeTrialProgress(storage, scope, initial(), now);
+    writeTrialProgress(storage, scope, stageTrialSubmission(initial(), payload), now + TRIAL_PROGRESS_TTL - 1);
+    assert.deepEqual(readTrialProgress(storage, scope, now + TRIAL_PROGRESS_TTL - 1).pendingSubmission, payload);
+    assert.equal(readTrialProgress(storage, scope, now + TRIAL_PROGRESS_TTL), null);
+    assert.equal(storage.getItem(TRIAL_PROGRESS_STORAGE_KEY), null);
+});
+
+test('registration, sessions, and answers share one deadline and expired in-memory retries cannot resurrect them', () => {
+    const storage = new MemoryStorage();
+    const now = 1000;
+    const record = beginParticipantRecovery(storage,
+        {subject_id: '001', age: 24, gender: 'MALE', group: 0}, scope.token, now);
+    const expiringScope = {...scope, expiresAt: record.expiresAt};
+    // Starting the trial later must not give answers a fresh twelve hours.
+    writeTrialProgress(storage, expiringScope, stageTrialSubmission(initial(), payload), now + 60_000);
+    assert.equal(JSON.parse(storage.getItem(TRIAL_PROGRESS_STORAGE_KEY)).expiresAt, record.expiresAt);
+    assert.deepEqual(readTrialProgress(storage, expiringScope, record.expiresAt - 1).pendingSubmission, payload);
+    pruneParticipantRecovery(storage, record.expiresAt);
+    assert.equal(storage.getItem(ACTIVE_PARTICIPANT_STORAGE_KEY), null);
+    assert.equal(storage.getItem(TRIAL_PROGRESS_STORAGE_KEY), null);
+    assert.equal(readTrialProgress(storage, expiringScope, record.expiresAt), null);
+    assert.throws(() => writeTrialProgress(storage, expiringScope,
+        stageTrialSubmission(initial(), payload), record.expiresAt + 1),
+    error => error.code === 'PARTICIPANT_RECOVERY_EXPIRED');
+    assert.equal(storage.getItem(TRIAL_PROGRESS_STORAGE_KEY), null);
 });

@@ -28,8 +28,10 @@ export const isAlreadySubmittedError = (error) => {
         const message = normalizeMessage(value);
         const hasAnswerSubject = /\b(?:answer|result|response|submission|cluster)\b/.test(message);
         const hasSavedAction = /\b(?:submitt?ed|answered|recorded|saved|registered|received)\b/.test(message);
-        const hasNegatedAction = /\b(?:not|never)\b.{0,20}\b(?:submitt?ed|answered|recorded|saved|registered|received)\b/.test(message)
-            || /(?:ثبت|ارسال)\s*(?:نشد|نشده)/.test(message);
+        const hasNegatedAction = /(?:\b(?:not|never|cannot)\b|\b[a-z]+n['’]t\b)[^.!?;]{0,80}\b(?:submitt?ed|answered|recorded|saved|registered|received|exists?|duplicate)\b/.test(message)
+            || /\bno\s+(?:duplicate\s+)?(?:answer|result|response|submission)\b/.test(message)
+            || /(?:ثبت|ارسال)\s*(?:نشد|نگردید|نگرفت)/.test(message)
+            || /وجود\s*(?:ندارد|نداشت)/.test(message);
 
         if (hasNegatedAction) return false;
 
@@ -59,15 +61,18 @@ export const isAlreadyCompletedError = (error) => {
     return [...collectMessages(data?.detail), ...collectMessages(data?.details)].some(value => {
         const message = normalizeMessage(value);
         return (/\b(?:session|phase)\b/.test(message) && /\balready\b/.test(message)
-            && /\bcompleted\b/.test(message) && !/\b(?:not|never)\b/.test(message))
+            && /\bcompleted\b/.test(message) && !/(?:\b(?:not|never|no|cannot)\b|\b[a-z]+n['’]t\b)/.test(message))
             || (/(?:جلسه|مرحله)/.test(message) && /(?:قبلا|پیش\s*تر)/.test(message)
-                && /(?:تکمیل|پایان)/.test(message) && !/(?:نشده|نشد)/.test(message));
+                && /(?:تکمیل|پایان)/.test(message) && !/(?:نشد|نیافت|نگردید)/.test(message));
     });
 };
 
 export const getTrialErrorMessage = (error, fallbackMessage) => {
     const status = Number(error?.response?.status);
 
+    if (error?.code === 'PARTICIPANT_RECOVERY_EXPIRED') {
+        return 'مهلت ۱۲ ساعته بازیابی آزمون پایان یافته است. لطفاً برای شروع دوباره به صفحه ثبت‌نام برگردید.';
+    }
     if (error?.code === 'TRIAL_PROGRESS_WRITE_FAILED') {
         return 'ذخیره پیشرفت آزمون در مرورگر انجام نشد. فضای ذخیره‌سازی مرورگر را بررسی کنید و دوباره تلاش کنید.';
     }

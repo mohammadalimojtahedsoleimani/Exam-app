@@ -14,6 +14,9 @@ import {useLockedViewport} from "../hooks/useLockedViewport.js";
 import {getTrialErrorMessage, isAlreadyCompletedError} from "../utils/trialErrors.js";
 import {createTrialSubmission} from "../utils/trialSubmission.js";
 import {
+    ACTIVE_PARTICIPANT_STORAGE_KEY, checkpointParticipantRecovery, commitParticipantFlow,
+} from "../utils/participantRecovery.js";
+import {
     readTrialProgress,
     writeTrialProgress,
     restoreTrialProgress,
@@ -284,10 +287,10 @@ const Trial = () => {
                 await findValidSession(scope.token);
                 if (!isCurrent()) return;
             }
-            if (transition.nextPhase !== null) {
-                localStorage.setItem('currentPhase', String(transition.nextPhase));
-            }
-            localStorage.setItem('currentState', transition.state);
+            commitParticipantFlow(localStorage, {
+                ...(transition.nextPhase !== null ? {currentPhase: String(transition.nextPhase)} : {}),
+                currentState: transition.state,
+            });
             navigate(transition.route, {replace: true});
         } catch (error) {
             if (isCurrent()) {
@@ -327,6 +330,12 @@ const Trial = () => {
             const isCurrent = () => !disposed && requestId === loadRequestIdRef.current;
 
             try {
+                const hasRecovery = localStorage.getItem(ACTIVE_PARTICIPANT_STORAGE_KEY);
+                const recovery = checkpointParticipantRecovery(localStorage);
+                if (hasRecovery && !recovery) {
+                    navigate(APP_ROUTE.SIGN_UP, {replace: true});
+                    return;
+                }
                 const sessionID = localStorage.getItem('currentSessionID');
                 const token = localStorage.getItem('authToken');
 
@@ -337,6 +346,7 @@ const Trial = () => {
                 const scope = {
                     token, sessionId: sessionID, phase: currentPhase,
                     phaseId: localStorage.getItem('currentPhaseID'),
+                    expiresAt: recovery?.expiresAt,
                 };
                 let progress = readTrialProgress(localStorage, scope);
 
@@ -614,7 +624,7 @@ const Trial = () => {
             }
 
             await setVideoSeen(token, sessionVideoId);
-            localStorage.setItem('currentPhaseVideoSeen', 'true');
+            commitParticipantFlow(localStorage, {currentPhaseVideoSeen: 'true'});
             setIsVideoComplete(true);
             setGlobalStatus('VIDEO');
         } catch (error) {

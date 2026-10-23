@@ -50,7 +50,7 @@ test('only defaults the answer when a valid answer cannot be recovered', () => {
 });
 
 test('retries keep the original answer and time, including zero', () => {
-    for (const response_time of [0, 412]) {
+    for (const response_time of [0, 412, 412.75]) {
         const previousSubmission = {cluster_id: 101, answer: 'RIGHT', response_time};
         const result = submission({answer: 'LEFT', previousSubmission, currentTimestamp: 9999});
         assert.deepEqual(result.payload, previousSubmission);
