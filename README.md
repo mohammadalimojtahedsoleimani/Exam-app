@@ -433,6 +433,8 @@ npm run dev
 
 Vite will print the local development URL, normally `http://localhost:5173/`.
 
+On Windows, double-click [`start-dev.bat`](./start-dev.bat) to start the app and open it in your browser. The launcher works from any working directory and installs dependencies automatically if `node_modules` is missing. Node.js and npm must be installed. Keep the terminal open while using the app; press `Ctrl+C` to stop the server.
+
 ### 4. Create a production build
 
 ```bash

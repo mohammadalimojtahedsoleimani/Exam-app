@@ -1,24 +1,110 @@
-# Logs
-logs
+# Dependencies and package-manager caches (keep package lockfiles)
+node_modules/
+.npm/
+.pnpm-store/
+.yarn/*
+!.yarn/patches/
+!.yarn/plugins/
+!.yarn/releases/
+!.yarn/sdks/
+!.yarn/versions/
+.pnp.*
+
+# Vite builds and generated caches
+dist/
+dist-ssr/
+build/
+.vite/
+.vite-temp/
+.cache/
+.eslintcache
+.stylelintcache
+*.tsbuildinfo
+vite.config.*.timestamp-*
+
+# Logs and runtime files
+logs/
 *.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
+*.pid
+*.pid.lock
+*.seed
+report.*.json
 
-node_modules
-dist
-dist-ssr
+# Test coverage and browser-test artifacts
+coverage/
+.nyc_output/
+playwright-report/
+playwright/.cache/
+test-results/
+cypress/screenshots/
+cypress/videos/
+
+# Local environment and credentials (keep shareable templates)
+.env
+.env.*
+!.env.example
+!.env.*.example
+!.env.sample
+!.env.*.sample
+!.env.template
+!.env.*.template
 *.local
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Local Claude, Codex, agent instructions, and installed skills
+.claude/
+.codex/
+.agents/
+.agent/
+.skills/
+skills/
+skills-lock.json
+CLAUDE.md
+CLAUDE.local.md
+CODEX.md
+AGENTS.md
+AGENTS.local.md
+.mcp.json
+.mcp.local.json
 
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
-.idea
-.DS_Store
+.idea/
+.vs/
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
 *.sw?
+*.code-workspace
+.history/
+
+# Operating-system files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100/
+.Trashes/
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Temporary files and backups
+tmp/
+temp/
+*.tmp
+*.temp
+*.bak
+*.orig
+*~
