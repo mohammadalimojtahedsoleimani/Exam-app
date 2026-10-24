@@ -51,6 +51,52 @@ const FIELD_ERROR_MESSAGES = {
     group: 'شماره گروه واردشده معتبر نیست.',
 };
 
+const SUBJECT_ID_RULES = [
+    { required: true, message: 'شناسه شرکت‌کننده را وارد کنید.' },
+    {
+        validator: (_, value) => value?.trim()
+            ? Promise.resolve()
+            : Promise.reject(new Error('شناسه نمی‌تواند خالی باشد.')),
+    },
+];
+
+const AGE_RULES = [
+    { required: true, message: 'سن را وارد کنید.' },
+    { type: 'integer', message: 'سن باید یک عدد کامل باشد.' },
+    { type: 'number', min: 1, max: 120, message: 'سن باید بین ۱ تا ۱۲۰ باشد.' },
+];
+
+const GROUP_RULES = [
+    { required: true, message: 'شماره گروه را وارد کنید.' },
+    { type: 'integer', message: 'شماره گروه باید یک عدد کامل باشد.' },
+    { type: 'number', min: 0, message: 'شماره گروه نمی‌تواند منفی باشد.' },
+];
+
+const GENDER_RULES = [{ required: true, message: 'جنسیت را انتخاب کنید.' }];
+
+const GENDER_OPTIONS = [
+    {
+        value: 'MALE',
+        label: (
+            <span className="signup-choice__label">
+                <ManOutlined aria-hidden="true" />
+                مرد
+                <CheckOutlined className="signup-choice__check" aria-hidden="true" />
+            </span>
+        ),
+    },
+    {
+        value: 'FEMALE',
+        label: (
+            <span className="signup-choice__label">
+                <WomanOutlined aria-hidden="true" />
+                زن
+                <CheckOutlined className="signup-choice__check" aria-hidden="true" />
+            </span>
+        ),
+    },
+];
+
 const toPersianDigits = (value) => Number(value).toLocaleString('fa-IR');
 
 const getRegistrationErrorMessage = (error) => {
@@ -363,14 +409,7 @@ const ProgressiveForm = () => {
                 <Form.Item
                     label="شناسه شرکت‌کننده"
                     name="subject_id"
-                    rules={[
-                        { required: true, message: 'شناسه شرکت‌کننده را وارد کنید.' },
-                        {
-                            validator: (_, value) => value?.trim()
-                                ? Promise.resolve()
-                                : Promise.reject(new Error('شناسه نمی‌تواند خالی باشد.')),
-                        },
-                    ]}
+                    rules={SUBJECT_ID_RULES}
                 >
                     <Input
                         prefix={<IdcardOutlined aria-hidden="true" />}
@@ -387,11 +426,7 @@ const ProgressiveForm = () => {
                     <Form.Item
                         label="سن"
                         name="age"
-                        rules={[
-                            { required: true, message: 'سن را وارد کنید.' },
-                            { type: 'integer', message: 'سن باید یک عدد کامل باشد.' },
-                            { type: 'number', min: 1, max: 120, message: 'سن باید بین ۱ تا ۱۲۰ باشد.' },
-                        ]}
+                        rules={AGE_RULES}
                     >
                         <InputNumber
                             prefix={<NumberOutlined aria-hidden="true" />}
@@ -409,11 +444,7 @@ const ProgressiveForm = () => {
                     <Form.Item
                         label="شماره گروه"
                         name="group"
-                        rules={[
-                            { required: true, message: 'شماره گروه را وارد کنید.' },
-                            { type: 'integer', message: 'شماره گروه باید یک عدد کامل باشد.' },
-                            { type: 'number', min: 0, message: 'شماره گروه نمی‌تواند منفی باشد.' },
-                        ]}
+                        rules={GROUP_RULES}
                     >
                         <InputNumber
                             prefix={<TeamOutlined aria-hidden="true" />}
@@ -431,7 +462,7 @@ const ProgressiveForm = () => {
                 <Form.Item
                     label="جنسیت"
                     name="gender"
-                    rules={[{ required: true, message: 'جنسیت را انتخاب کنید.' }]}
+                    rules={GENDER_RULES}
                 >
                     <Radio.Group
                         className="signup-choice"
@@ -441,28 +472,7 @@ const ProgressiveForm = () => {
                         disabled={isLoading || lockRegisteredFields}
                         role="radiogroup"
                         aria-label="جنسیت شرکت‌کننده"
-                        options={[
-                            {
-                                value: 'MALE',
-                                label: (
-                                    <span className="signup-choice__label">
-                                        <ManOutlined aria-hidden="true" />
-                                        مرد
-                                        <CheckOutlined className="signup-choice__check" aria-hidden="true" />
-                                    </span>
-                                ),
-                            },
-                            {
-                                value: 'FEMALE',
-                                label: (
-                                    <span className="signup-choice__label">
-                                        <WomanOutlined aria-hidden="true" />
-                                        زن
-                                        <CheckOutlined className="signup-choice__check" aria-hidden="true" />
-                                    </span>
-                                ),
-                            },
-                        ]}
+                        options={GENDER_OPTIONS}
                     />
                 </Form.Item>
 
@@ -511,4 +521,4 @@ const ProgressiveForm = () => {
     );
 };
 
-export default ProgressiveForm;
+export default React.memo(ProgressiveForm);

@@ -1,4 +1,4 @@
-import React, {useState, useEffect, useCallback, useMemo, useRef} from 'react';
+import React, {memo, useState, useEffect, useCallback, useMemo, useRef} from 'react';
 import {useLocation, useNavigate} from 'react-router-dom';
 import {Button, ConfigProvider, theme, Typography} from 'antd';
 import {
@@ -34,6 +34,48 @@ import {
 import './Trial.css';
 
 const {Title, Paragraph} = Typography;
+
+// Keep immutable presentation objects out of the timed phase renders.
+const TRIAL_THEME = {
+    algorithm: theme.darkAlgorithm,
+    token: {colorPrimary: '#2dd4bf', fontFamily: "'Vazirmatn', sans-serif"},
+};
+
+const styles = {
+    backgroundWrapper: {
+        minHeight: '100dvh',
+        width: '100%',
+        background: 'radial-gradient(circle at 50% 10%, #134e4a 0%, #0f172a 60%, #020617 100%)',
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'center',
+        alignItems: 'center',
+        position: 'relative',
+        overflow: 'hidden',
+        fontFamily: "'Vazirmatn', sans-serif",
+    },
+    glassCard: {
+        background: 'rgba(15, 23, 42, 0.7)',
+        backdropFilter: 'blur(20px)',
+        border: '1px solid rgba(45, 212, 191, 0.2)',
+        boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.6)',
+        borderRadius: '24px',
+        padding: '40px',
+        maxWidth: '1000px',
+        width: '90%',
+        direction: 'rtl',
+        textAlign: 'right'
+    },
+    primaryButton: {
+        background: 'linear-gradient(135deg, #0f766e 0%, #2dd4bf 100%)',
+        border: 'none',
+        height: '50px',
+        fontSize: '18px',
+        fontWeight: 'bold',
+        marginTop: '30px',
+        boxShadow: '0 4px 15px rgba(13, 148, 136, 0.4)'
+    }
+};
 
 const MOOD_TYPE = Object.freeze({
     POSITIVE: 'POSITIVE',
@@ -140,7 +182,7 @@ const scheduleAtFrame = (delay, callback) => {
  * Images carry no `alt` text on purpose — a visible alt string would flash as a
  * competing visual cue right where the participant is asked to look.
  */
-const StimulusImage = ({src, isVisible}) => {
+const StimulusImage = memo(function StimulusImage({src, isVisible}) {
     if (!src) return null;
 
     return (
@@ -155,9 +197,9 @@ const StimulusImage = ({src, isVisible}) => {
             onContextMenu={(event) => event.preventDefault()}
         />
     );
-};
+});
 
-const TrialStage = ({leftImage, rightImage, targetPosition, phase}) => {
+const TrialStage = memo(function TrialStage({leftImage, rightImage, targetPosition, phase}) {
     const showComparison = phase === 'COMPARISON';
     const showTarget = phase === 'TARGET';
 
@@ -190,7 +232,7 @@ const TrialStage = ({leftImage, rightImage, targetPosition, phase}) => {
             </div>
         </div>
     );
-};
+});
 
 const Trial = () => {
     const navigate = useNavigate();
@@ -696,52 +738,11 @@ const Trial = () => {
         };
     }, [currentTrial]);
 
-    // --- Styles ---
-    const styles = {
-        backgroundWrapper: {
-            minHeight: '100dvh',
-            width: '100%',
-            background: 'radial-gradient(circle at 50% 10%, #134e4a 0%, #0f172a 60%, #020617 100%)',
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'center',
-            alignItems: 'center',
-            position: 'relative',
-            overflow: 'hidden',
-            fontFamily: "'Vazirmatn', sans-serif",
-        },
-        glassCard: {
-            background: 'rgba(15, 23, 42, 0.7)',
-            backdropFilter: 'blur(20px)',
-            border: '1px solid rgba(45, 212, 191, 0.2)',
-            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.6)',
-            borderRadius: '24px',
-            padding: '40px',
-            maxWidth: '1000px',
-            width: '90%',
-            direction: 'rtl',
-            textAlign: 'right'
-        },
-        primaryButton: {
-            background: 'linear-gradient(135deg, #0f766e 0%, #2dd4bf 100%)',
-            border: 'none',
-            height: '50px',
-            fontSize: '18px',
-            fontWeight: 'bold',
-            marginTop: '30px',
-            boxShadow: '0 4px 15px rgba(13, 148, 136, 0.4)'
-        }
-    };
-
-
     // --- Main Render ---
 
     return (
         <ConfigProvider
-            theme={{
-                algorithm: theme.darkAlgorithm,
-                token: {colorPrimary: '#2dd4bf', fontFamily: "'Vazirmatn', sans-serif"},
-            }}
+            theme={TRIAL_THEME}
         >
             <div style={styles.backgroundWrapper}>
 

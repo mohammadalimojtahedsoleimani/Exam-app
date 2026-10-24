@@ -1,13 +1,14 @@
 import React, { Suspense, lazy, useEffect } from 'react';
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, useLocation } from 'react-router-dom';
 
 import SignUp from './pages/SignUp';
 
 // Everything past the landing screen is code-split: the sign-up page no longer
 // pays for antd's Table, the report screens or framer-motion on first paint.
 const loadInstructions = () => import('./pages/InstructionsScreen');
+const loadTrial = () => import('./pages/Trial');
 const InstructionsScreen = lazy(loadInstructions);
-const Trial = lazy(() => import('./pages/Trial'));
+const Trial = lazy(loadTrial);
 const FinalScreen = lazy(() => import('./pages/FinalScreen.jsx'));
 const Report = lazy(() => import('./pages/Report'));
 const TableResults = lazy(() => import('./pages/TableResults.jsx'));
@@ -23,6 +24,8 @@ const RouteFallback = () => (
 );
 
 const AppRoutes = () => {
+    const { pathname } = useLocation();
+
     // The participant always goes straight from sign-up to the instructions
     // screen, so warm that chunk once the browser is idle.
     useEffect(() => {
@@ -32,6 +35,18 @@ const AppRoutes = () => {
 
         return () => cancel(handle);
     }, []);
+
+    // Fetch only the next screen's code while instructions are open. Loading a
+    // module does not mount the trial or start its session/media requests.
+    useEffect(() => {
+        if (pathname !== '/instructions') return undefined;
+
+        const idle = window.requestIdleCallback ?? ((fn) => setTimeout(fn, 1200));
+        const cancel = window.cancelIdleCallback ?? clearTimeout;
+        const handle = idle(() => { loadTrial().catch(() => {}); });
+
+        return () => cancel(handle);
+    }, [pathname]);
 
     return (
         <Suspense fallback={<RouteFallback />}>
