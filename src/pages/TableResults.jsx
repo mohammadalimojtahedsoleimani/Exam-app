@@ -272,8 +272,8 @@ const getDownloadFilename = (contentDisposition, fallbackName) => {
   return filename.replace(/[\\/]/g, '_') || fallbackName;
 };
 
-const downloadFile = async (url, fallbackName) => {
-  const response = await axios.get(url, { responseType: 'blob' });
+const downloadFile = async (url, fallbackName, logContext) => {
+  const response = await axios.get(url, { responseType: 'blob', logContext });
   const filename = getDownloadFilename(response.headers['content-disposition'], fallbackName);
   const contentType = response.headers['content-type'] || 'application/octet-stream';
   const blobUrl = URL.createObjectURL(new Blob([response.data], { type: contentType }));
@@ -581,6 +581,8 @@ export default function ParticipantsTable() {
 
   const downloadAllPhases = useCallback(async (subjectId) => {
     const stateKey = String(subjectId);
+    const participant = participants.find(item => String(item.subject_id) === stateKey);
+    const logContext = {profileId: stateKey, groupNumber: participant?.group ?? null};
     const toastId = getReportToastId(subjectId);
     setDownloadState(previous => ({
       ...previous,
@@ -590,7 +592,7 @@ export default function ParticipantsTable() {
     let resultData;
     try {
       const encodedSubjectId = encodeURIComponent(stateKey);
-      const response = await axios.get(`${API_SERVER()}user/participants/${encodedSubjectId}/`);
+      const response = await axios.get(`${API_SERVER()}user/participants/${encodedSubjectId}/`, {logContext});
       resultData = response.data?.result_data;
     } catch (requestError) {
       console.error(`Failed to fetch data for ${stateKey}`, requestError);
@@ -662,7 +664,7 @@ export default function ParticipantsTable() {
       try {
         if (!phase.reportFile) throw new Error('The report file URL is missing.');
         const fullUrl = new URL(phase.reportFile, API_SERVER()).href;
-        await downloadFile(fullUrl, fallbackName);
+        await downloadFile(fullUrl, fallbackName, {...logContext, phaseName: phase.label});
         setDownloadState(previous => ({
           ...previous,
           [stateKey]: {
@@ -734,7 +736,7 @@ export default function ParticipantsTable() {
     }
 
     resetDownloadStateLater(stateKey, finalStatus);
-  }, [reduceMotion, resetDownloadStateLater]);
+  }, [participants, reduceMotion, resetDownloadStateLater]);
 
   // Typing stays responsive on large lists: the input updates immediately while
   // the (expensive) filter + table render runs against the deferred value.
@@ -970,6 +972,14 @@ export default function ParticipantsTable() {
                   {loading ? 'در حال همگام‌سازی' : error ? 'ارتباط قطع است' : 'سامانه فعال است'}
                 </span>
               </span>
+
+              <Button
+                className="results-back-button"
+                icon={<DatabaseOutlined aria-hidden="true" />}
+                onClick={() => navigate(APP_ROUTE.LOGS)}
+              >
+                سوابق درخواست‌ها
+              </Button>
 
               <FullscreenButton
                 mode="toggle"

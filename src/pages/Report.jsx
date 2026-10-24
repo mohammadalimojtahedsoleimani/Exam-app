@@ -148,7 +148,7 @@ const Report = () => {
                 } catch (error) {
                     // A lost completion response is recoverable only when the
                     // duplicate response includes the actual backend mark.
-                    if (!isAlreadyCompletedError(error)
+                    if (!isAlreadyCompletedError(error, sessionId)
                         || normalizePracticeMark(error.response?.data?.mark) === null) throw error;
                     response = error.response;
                 }

@@ -1,7 +1,7 @@
 import React from 'react';
 import { ConfigProvider, theme } from 'antd';
 import faIR from 'antd/locale/fa_IR';
-import { ArrowLeftOutlined, BarChartOutlined, ExperimentOutlined } from '@ant-design/icons';
+import { ArrowLeftOutlined, BarChartOutlined, DatabaseOutlined, ExperimentOutlined } from '@ant-design/icons';
 import { Link } from 'react-router-dom';
 import ProgressiveForm from '../components/ProgressiveForm.jsx';
 import FullscreenButton from '../components/FullscreenButton.jsx';
@@ -117,6 +117,15 @@ const SignUp = () => {
                                 variant="chip"
                                 className="signup-fullscreen"
                             />
+
+                            <Link
+                                to={APP_ROUTE.LOGS}
+                                className="signup-results-link"
+                                aria-label="مشاهده سوابق درخواست‌ها"
+                            >
+                                <DatabaseOutlined aria-hidden="true" />
+                                <span className="signup-results-link__label">سوابق</span>
+                            </Link>
 
                             <Link
                                 to={APP_ROUTE.RESULTS}

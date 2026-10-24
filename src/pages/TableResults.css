@@ -170,6 +170,8 @@
 
 .results-topbar__actions {
   display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   flex: 0 0 auto;
   align-items: center;
   gap: 0.55rem;

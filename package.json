@@ -7,8 +7,10 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
-    "test": "node --test src/utils/*.test.js",
-    "preview": "vite preview"
+    "test": "node --test src/utils/*.test.js server/*.test.js",
+    "preview": "vite preview",
+    "logs:server": "node server/requestLogServer.js",
+    "test:logs": "node --test server/*.test.js"
   },
   "dependencies": {
     "@ant-design/icons": "^6.1.0",

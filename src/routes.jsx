@@ -12,6 +12,7 @@ const Trial = lazy(loadTrial);
 const FinalScreen = lazy(() => import('./pages/FinalScreen.jsx'));
 const Report = lazy(() => import('./pages/Report'));
 const TableResults = lazy(() => import('./pages/TableResults.jsx'));
+const RequestLogs = lazy(() => import('./pages/RequestLogs.jsx'));
 const NotFound = lazy(() => import('./pages/NotFound'));
 
 const RouteFallback = () => (
@@ -57,6 +58,7 @@ const AppRoutes = () => {
                 <Route path="/Trial" element={<Trial />} />
                 <Route path="/Report" element={<Report />} />
                 <Route path="/results" element={<TableResults />} />
+                <Route path="/logs" element={<RequestLogs />} />
                 <Route path="*" element={<NotFound />} />
             </Routes>
         </Suspense>

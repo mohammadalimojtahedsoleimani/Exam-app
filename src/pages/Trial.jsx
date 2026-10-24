@@ -11,7 +11,8 @@ import {
 import {PlayCircleOutlined, FileTextOutlined, LoadingOutlined} from '@ant-design/icons';
 import {useFullscreenPromptPause} from "../context/fullscreenContext.js";
 import {useLockedViewport} from "../hooks/useLockedViewport.js";
-import {getTrialErrorMessage, isAlreadyCompletedError} from "../utils/trialErrors.js";
+import {getTrialErrorMessage} from "../utils/trialErrors.js";
+import {captureProbeRequestGuard} from '../utils/probeRequest.js';
 import {createTrialSubmission} from "../utils/trialSubmission.js";
 import {
     ACTIVE_PARTICIPANT_STORAGE_KEY, checkpointParticipantRecovery, commitParticipantFlow,
@@ -312,11 +313,7 @@ const Trial = () => {
 
             if (transition.completeSession) {
                 if (!phaseCompletionSavedRef.current) {
-                    try {
-                        await setPhaseComplete(scope.token, scope.sessionId);
-                    } catch (error) {
-                        if (!isAlreadyCompletedError(error)) throw error;
-                    }
+                    await setPhaseComplete(scope.token, scope.sessionId);
                     if (!isCurrent()) return;
                     phaseCompletionSavedRef.current = true;
                 }
@@ -415,6 +412,8 @@ const Trial = () => {
                 phaseCompletionSavedRef.current = progress?.phaseCompletionSaved === true;
                 submissionInFlightRef.current = false;
                 phaseTransitionInFlightRef.current = false;
+                videoSeenInFlightRef.current = false;
+                setIsSavingVideo(false);
                 setGlobalStatus(progress ? 'RESTORING' : 'LOADING');
                 setFlowError('');
                 setExams(null);
@@ -653,7 +652,11 @@ const Trial = () => {
 
     const handleVideoEnded = async () => {
         if (videoSeenInFlightRef.current) return;
-        videoSeenInFlightRef.current = true;
+        const operation = {};
+        videoSeenInFlightRef.current = operation;
+        const requestId = loadRequestIdRef.current;
+        const isOwnerCurrent = captureProbeRequestGuard(localStorage.getItem('authToken'));
+        const isCurrent = () => requestId === loadRequestIdRef.current && isOwnerCurrent();
         setIsSavingVideo(true);
         setFlowError('');
 
@@ -666,15 +669,19 @@ const Trial = () => {
             }
 
             await setVideoSeen(token, sessionVideoId);
+            if (!isCurrent()) return;
             commitParticipantFlow(localStorage, {currentPhaseVideoSeen: 'true'});
             setIsVideoComplete(true);
             setGlobalStatus('VIDEO');
         } catch (error) {
+            if (!isCurrent()) return;
             setIsVideoComplete(false);
             handleTrialError(error, 'VIDEO_ERROR', 'ثبت مشاهده ویدیو انجام نشد. لطفاً دوباره تلاش کنید.');
         } finally {
-            videoSeenInFlightRef.current = false;
-            setIsSavingVideo(false);
+            if (videoSeenInFlightRef.current === operation) {
+                videoSeenInFlightRef.current = false;
+                setIsSavingVideo(false);
+            }
         }
     };
 

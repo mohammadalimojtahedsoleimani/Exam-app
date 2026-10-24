@@ -1,91 +1,78 @@
 import axios from "axios";
 import { API_SERVER } from "../utils/API_SERVER.js";
-import { isAlreadySubmittedError } from "../utils/trialErrors.js";
+import { isAlreadySubmittedError, isAlreadyCompletedError, isAlreadySeenError } from "../utils/trialErrors.js";
 import {checkpointParticipantRecovery, commitParticipantFlow} from "../utils/participantRecovery.js";
+import {captureProbeRequestGuard, performProbeRequest, PROBE_REQUEST_TIMEOUT_MS} from '../utils/probeRequest.js';
 
 export const submitTrialAnswer = async (token, payload) => {
-    try {
-        await axios.post(`${API_SERVER()}probe/results/create/`, payload, {
+    // All retries reuse the exact answer and original measured reaction time.
+    await performProbeRequest(
+        () => axios.post(`${API_SERVER()}probe/results/create/`, payload, {
             headers: {Authorization: `token ${token}`, 'Content-Type': 'application/json'},
-            timeout: 15000,
-        });
-    } catch (error) {
-        // A refresh may interrupt a successful request before its response arrives.
-        if (!isAlreadySubmittedError(error)) throw error;
-    }
+            timeout: PROBE_REQUEST_TIMEOUT_MS,
+        }),
+        {isCurrent: captureProbeRequestGuard(token), recover: error => isAlreadySubmittedError(error, payload.cluster_id)},
+    );
 };
 
 export const getProbePhases = async (token) => {
-    try {
-        const response = await axios.get(`${API_SERVER()}probe/phases/`, {
+    return performProbeRequest(
+        () => axios.get(`${API_SERVER()}probe/phases/`, {
             headers: { Authorization: `token ${token}` },
-        });
-
-        return response;
-
-    } catch (error) {
-        console.error(error);
-        throw error;
-    }
+            timeout: PROBE_REQUEST_TIMEOUT_MS,
+        }),
+        {isCurrent: captureProbeRequestGuard(token)},
+    );
 };
 
 export const createProbeSession = async (token, targetId) => {
-    try {
-
-        return await axios.post(`${API_SERVER()}probe/sessions/create/`, {
+    return performProbeRequest(
+        () => axios.post(`${API_SERVER()}probe/sessions/create/`, {
             phase_id: targetId,
         }, {
-            headers: { Authorization: 'token ' + token }
-        });
-    } catch (error) {
-        console.error(error);
-        throw error;
-    }
+            headers: { Authorization: 'token ' + token },
+            timeout: PROBE_REQUEST_TIMEOUT_MS,
+        }),
+        {isCurrent: captureProbeRequestGuard(token), maxRetries: 0},
+    );
 };
 
 
 export const getSessionClusters = async (token, phaseId) => {
-    try {
-        const response = await axios.get(`${API_SERVER()}probe/sessions/clusters/`, {
+    return performProbeRequest(
+        () => axios.get(`${API_SERVER()}probe/sessions/clusters/`, {
             headers: { Authorization: `token ${token}` },
+            timeout: PROBE_REQUEST_TIMEOUT_MS,
             params: {
                 session_id: phaseId,
             }
-        });
-
-        return response;
-
-    } catch (error) {
-        console.error(error);
-        throw error;
-    }
+        }),
+        {isCurrent: captureProbeRequestGuard(token)},
+    );
 };
 
 export const setPhaseComplete = async (token, sessionID) => {
-    try {
-        return await axios.post(`${API_SERVER()}probe/sessions/complete/`, {
+    return performProbeRequest(
+        () => axios.post(`${API_SERVER()}probe/sessions/complete/`, {
             session_id: sessionID,
         }, {
             headers: { Authorization: `token ${token}` },
-        });
-
-    } catch (error) {
-        console.error(error);
-        throw error;
-    }
+            timeout: PROBE_REQUEST_TIMEOUT_MS,
+        }),
+        {isCurrent: captureProbeRequestGuard(token), recover: error => isAlreadyCompletedError(error, sessionID)},
+    );
 };
 
 export const setVideoSeen = async (token, session_videoId) => {
-    try {
-        return await axios.post(`${API_SERVER()}probe/videos/seen/`, {
+    return performProbeRequest(
+        () => axios.post(`${API_SERVER()}probe/videos/seen/`, {
             session_video_id: session_videoId,
         }, {
             headers: { Authorization: `token ${token}` },
-        });
-    } catch (error) {
-        console.error(error);
-        throw error;
-    }
+            timeout: PROBE_REQUEST_TIMEOUT_MS,
+        }),
+        {isCurrent: captureProbeRequestGuard(token), recover: error => isAlreadySeenError(error, session_videoId)},
+    );
 };
 
 export const findValidSession = async (token, flow = {}) => {

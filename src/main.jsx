@@ -8,6 +8,11 @@ import {Provider} from 'react-redux';
 import {store} from './redux/store';
 import {ACTIVE_PARTICIPANT_STORAGE_KEY, checkpointParticipantRecovery} from './utils/participantRecovery.js';
 import {APP_ROUTE} from './utils/phaseFlow.js';
+import axios from 'axios';
+import {installRequestLogging} from './utils/requestLogger.js';
+
+// Install once, before any page or participant API request can run.
+installRequestLogging(axios);
 
 // Finish an interrupted phase/session update before pages read their initial
 // phase. Individual localStorage writes can be interrupted by a tab closing.

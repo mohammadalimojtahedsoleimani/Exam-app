@@ -12,6 +12,7 @@ export const APP_ROUTE = Object.freeze({
     REPORT: '/Report',
     FINAL: '/Final',
     RESULTS: '/results',
+    LOGS: '/logs',
 });
 
 const TRIAL_COMPLETION_TRANSITIONS = Object.freeze({

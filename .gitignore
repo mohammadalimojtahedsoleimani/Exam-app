@@ -23,6 +23,7 @@ build/
 vite.config.*.timestamp-*
 
 # Logs and runtime files
+data/
 logs/
 *.log
 npm-debug.log*
