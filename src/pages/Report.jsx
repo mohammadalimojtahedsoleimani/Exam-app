@@ -19,6 +19,7 @@ import {
 } from '@ant-design/icons';
 import { cssTransition, Slide, toast } from 'react-toastify';
 import { setPhaseComplete, findValidSession } from '../api/probes.js';
+import { getProbePhaseErrorMessage } from '../utils/probePhaseErrors.js';
 import mainlogo from '../assets/mainlogo.png';
 import infs from '../assets/infs.png';
 import { useLockedViewport } from '../hooks/useLockedViewport.js';
@@ -242,7 +243,7 @@ const Report = () => {
             navigate(APP_ROUTE.TRIAL, { replace: true });
         } catch (error) {
             console.error('Failed to prepare the next session', error);
-            const message = 'آماده‌سازی مرحله بعد انجام نشد. لطفاً دوباره تلاش کنید.';
+            const message = getProbePhaseErrorMessage(error) ?? 'آماده‌سازی مرحله بعد انجام نشد. لطفاً دوباره تلاش کنید.';
             setTransitionError(message);
             showReportToast({
                 toastId: REPORT_TRANSITION_TOAST_ID,

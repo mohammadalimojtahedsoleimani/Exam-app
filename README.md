@@ -193,6 +193,8 @@ is_allowed === true && is_passed === false
 
 The active phase UUID, Persian name, `has_video`, and `video_seen` values come directly from `/probe/phases/`. Recognized phase-name and instruction metadata are cross-checked; contradictory mood metadata stops the flow instead of silently choosing the wrong content.
 
+Finishing mood phases and starting phase 4 use a verified session handoff. The backend confirms ownership, saved answers, the existing score thresholds, and the required phase order. Phase 3 still leads to phase 4's narrated instructions; starting afterward creates or resumes the same final session. Retries preserve recorded answers, reaction times, cluster order, and video state. Final is allowed only with full completion evidence for all four phases. Conflicting or incomplete evidence keeps a retry available instead of skipping a phase. See [the update instructions](MOOD_HANDOFF_UPDATE.md) when installing both sides of this change.
+
 ### Narrated instructions
 
 - Phase 1 uses its own text and `first_ins.mp3`.
@@ -390,6 +392,7 @@ The experiment backend is separate from this repository. The frontend currently 
 | `POST` | `probe/results/create/` | Save one cluster answer and response time |
 | `POST` | `probe/videos/seen/` | Record completed video playback |
 | `POST` | `probe/sessions/complete/` | Complete a session and return its mark when applicable |
+| `POST` | `probe/sessions/handoff/` | Verify mood-phase completion and atomically create or resume the remaining mood session |
 | `GET` | `user/participants/` | Load participants for the results dashboard |
 | `GET` | `user/participants/{subject_id}/` | Load one participant's phase-report metadata |
 

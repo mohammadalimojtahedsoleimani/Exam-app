@@ -7,7 +7,10 @@ import {
     setVideoSeen,
     findValidSession,
     submitTrialAnswer,
+    reconcileMoodSession,
 } from "../api/probes.js";
+import {commitMoodHandoff} from '../utils/moodHandoff.js';
+import {getProbePhaseErrorMessage} from '../utils/probePhaseErrors.js';
 import {PlayCircleOutlined, FileTextOutlined, LoadingOutlined} from '@ant-design/icons';
 import {useFullscreenPromptPause} from "../context/fullscreenContext.js";
 import {useLockedViewport} from "../hooks/useLockedViewport.js";
@@ -285,7 +288,7 @@ const Trial = () => {
 
     const handleTrialError = useCallback((error, status, fallbackMessage) => {
         console.error(`Trial ${status}:`, error);
-        setFlowError(getTrialErrorMessage(error, fallbackMessage));
+        setFlowError(getProbePhaseErrorMessage(error) ?? getTrialErrorMessage(error, fallbackMessage));
         setGlobalStatus(status);
     }, []);
 
@@ -309,6 +312,20 @@ const Trial = () => {
             const transition = getTrialCompletionTransition(currentPhase);
             if (!isCurrent() || !isTrialProgressComplete(progressRef.current)) {
                 throw new Error('This phase still has unconfirmed answers.');
+            }
+
+            if (phaseUsesMoodInstructions(currentPhase)) {
+                const handoff = await reconcileMoodSession(scope.token, scope.sessionId, {
+                    phase: currentPhase, action: 'complete',
+                });
+                if (!isCurrent()) return;
+                phaseCompletionSavedRef.current = true;
+                if (!progressRef.current.phaseCompletionSaved) {
+                    persistProgress(scope, {...progressRef.current, phaseCompletionSaved: true});
+                }
+                const route = commitMoodHandoff(localStorage, scope.token, handoff);
+                navigate(route, {replace: true});
+                return;
             }
 
             if (transition.completeSession) {

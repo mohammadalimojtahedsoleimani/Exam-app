@@ -17,7 +17,9 @@ import {
   PauseCircleOutlined,
   PlayCircleOutlined
 } from '@ant-design/icons';
-import { findValidSession } from "../api/probes.js";
+import { findValidSession, reconcileMoodSession } from "../api/probes.js";
+import {commitMoodHandoff} from '../utils/moodHandoff.js';
+import { getProbePhaseErrorMessage } from "../utils/probePhaseErrors.js";
 import { useLockedViewport } from "../hooks/useLockedViewport.js";
 import { createInstructionNarration, INITIAL_NARRATION_STATE } from "../utils/instructionNarration.js";
 import {
@@ -25,6 +27,7 @@ import {
 } from "../utils/participantRecovery.js";
 import {
   APP_ROUTE,
+  PHASE,
   parsePhase,
   phaseHasInstructions,
   phaseUsesMoodInstructions,
@@ -289,6 +292,14 @@ const InstructionsScreen = () => {
         // An interrupted click may have already prepared this phase's session.
         // Reuse it instead of creating a new session on recovery.
         if (localStorage.getItem('currentState') !== 'Exam') {
+          if (currentPhase === PHASE.MOOD_SECOND) {
+            const handoff = await reconcileMoodSession(token, localStorage.getItem('currentSessionID'), {
+              phase: currentPhase, action: 'continue',
+            });
+            const route = commitMoodHandoff(localStorage, token, handoff);
+            navigate(route, {replace: true});
+            return;
+          }
           await findValidSession(token, {phase: currentPhase, state: 'Exam'});
         }
       } else if (!localStorage.getItem('currentSessionID')) {
@@ -299,7 +310,7 @@ const InstructionsScreen = () => {
       navigate(APP_ROUTE.TRIAL, { replace: true });
     } catch (error) {
       console.error(error);
-      showToast("خطا در ارتباط با سرور", "error");
+      showToast(getProbePhaseErrorMessage(error) ?? "خطا در ارتباط با سرور", "error");
     } finally {
       navigationInFlightRef.current = false;
       setIsLoading(false);

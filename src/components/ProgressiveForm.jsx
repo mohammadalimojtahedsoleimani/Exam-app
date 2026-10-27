@@ -23,6 +23,7 @@ import { useDispatch } from 'react-redux';
 import { setCredentials } from '../redux/authSlice';
 import { API_SERVER } from '../utils/API_SERVER.js';
 import { findValidSession } from '../api/probes.js';
+import { getProbePhaseErrorMessage } from '../utils/probePhaseErrors.js';
 import { usePrefersReducedMotion } from '../hooks/usePrefersReducedMotion.js';
 import { APP_ROUTE, PHASE } from '../utils/phaseFlow.js';
 import {
@@ -310,7 +311,7 @@ const ProgressiveForm = () => {
                     toastId,
                     'warning',
                     'آماده‌سازی جلسه کامل نشد',
-                    'اطلاعات شما ثبت شده است؛ دکمه شروع را دوباره بزنید.',
+                    getProbePhaseErrorMessage(error) ?? 'اطلاعات شما ثبت شده است؛ دکمه شروع را دوباره بزنید.',
                     reduceMotion,
                 );
             } else {

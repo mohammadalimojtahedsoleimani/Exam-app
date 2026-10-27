@@ -3,6 +3,21 @@ import { API_SERVER } from "../utils/API_SERVER.js";
 import { isAlreadySubmittedError, isAlreadyCompletedError, isAlreadySeenError } from "../utils/trialErrors.js";
 import {checkpointParticipantRecovery, commitParticipantFlow} from "../utils/participantRecovery.js";
 import {captureProbeRequestGuard, performProbeRequest, PROBE_REQUEST_TIMEOUT_MS} from '../utils/probeRequest.js';
+import {createProbePhaseError} from '../utils/probePhaseErrors.js';
+import {validateMoodHandoff} from '../utils/moodHandoff.js';
+
+export const reconcileMoodSession = async (token, sessionId, {phase, action}) => {
+    const response = await performProbeRequest(
+        () => axios.post(`${API_SERVER()}probe/sessions/handoff/`, {
+            session_id: sessionId, phase, action,
+        }, {
+            headers: {Authorization: `token ${token}`},
+            timeout: PROBE_REQUEST_TIMEOUT_MS,
+        }),
+        {isCurrent: captureProbeRequestGuard(token)},
+    );
+    return validateMoodHandoff(response.data, sessionId, action);
+};
 
 export const submitTrialAnswer = async (token, payload) => {
     // All retries reuse the exact answer and original measured reaction time.
@@ -86,18 +101,33 @@ export const findValidSession = async (token, flow = {}) => {
 
     const phasesRes = await getProbePhases(token);
     if (!Array.isArray(phasesRes.data)) {
-        throw new Error('The probe phases API returned an invalid response.');
+        throw createProbePhaseError('PROBE_PHASES_INVALID', 'The probe phases API returned an invalid response.', phasesRes.data);
     }
 
     const activePhases = phasesRes.data.filter(item => item.is_allowed && !item.is_passed);
     const activePhase = activePhases[0];
 
     if (!activePhase) {
-        throw new Error('No active probe phase is available.');
+        const isComplete = phasesRes.data.length === 4 && phasesRes.data.every(phase => phase.is_passed === true);
+        throw createProbePhaseError(
+            isComplete ? 'PROBE_EXPERIMENT_COMPLETE' : 'PROBE_PHASE_UNAVAILABLE',
+            isComplete ? 'All four probe phases have already been completed.' : 'No active probe phase is available.',
+            phasesRes.data,
+        );
     }
 
     if (activePhases.length > 1) {
-        throw new Error('The API returned more than one active probe phase.');
+        throw createProbePhaseError('PROBE_PHASE_AMBIGUOUS', 'The API returned more than one active probe phase.', phasesRes.data);
+    }
+
+    // Re-registering an existing ID preserves its backend sessions. Reject a
+    // later API phase instead of starting it under an earlier local counter.
+    const apiPhase = phasesRes.data.indexOf(activePhase) + 1;
+    if (flow.phase !== undefined && apiPhase !== flow.phase) {
+        throw createProbePhaseError(
+            'PROBE_PHASE_MISMATCH', 'The active API phase does not match the current exam phase.',
+            phasesRes.data, {expectedPhase: flow.phase, apiPhase},
+        );
     }
 
     if (localStorage.getItem('authToken') !== token) {

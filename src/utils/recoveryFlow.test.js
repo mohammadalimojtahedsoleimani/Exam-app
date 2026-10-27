@@ -22,6 +22,12 @@ class MemoryStorage {
 const identity = {subject_id: '0012', age: 28, gender: 'FEMALE', group: 2};
 const scope = {token: 'original-token', sessionId: 'session-2', phaseId: 'baseline', phase: 2};
 const clusters = [{id: 11}, {id: 12}, {id: 13}];
+const moodPhaseList = [
+    {id: 'practice', is_allowed: true, is_passed: true},
+    {id: 'baseline', is_allowed: true, is_passed: true},
+    {id: 'positive', name: 'خلق مثبت', is_allowed: true, is_passed: false, has_video: true, video_seen: false},
+    {id: 'negative', is_allowed: false, is_passed: false},
+];
 const setFlow = storage => {
     storage.setItem('currentPhase', '2');
     storage.setItem('currentPhaseID', 'baseline');
@@ -117,7 +123,7 @@ test('session preparation stores the new session and its phase together for reco
     beginParticipantRecovery(storage, identity, scope.token);
     axios.defaults.adapter = async config => ({
         data: config.method === 'get'
-            ? [{id: 'positive', name: 'خلق مثبت', is_allowed: true, is_passed: false, has_video: true, video_seen: false}]
+            ? moodPhaseList
             : {session_id: 'mood-session', cluster_count: 20},
         status: 200, statusText: 'OK', headers: {}, config,
     });
@@ -146,7 +152,7 @@ test('a delayed session response cannot replace another participant\'s active se
     const sessionStarted = new Promise(resolve => { notifySessionStarted = resolve; });
     axios.defaults.adapter = async config => {
         if (config.method === 'get') return {
-            data: [{id: 'positive', is_allowed: true, is_passed: false}],
+            data: moodPhaseList,
             status: 200, statusText: 'OK', headers: {}, config,
         };
         notifySessionStarted();
